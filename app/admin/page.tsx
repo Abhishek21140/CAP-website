@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import styles from "./admin.module.css";
 
 type Section = "Participants" | "Submissions" | "Task Store" | "Leaderboard" | "Content";
@@ -56,8 +57,8 @@ export default function AdminPage() {
   return (
     <main className={styles.adminShell}>
       <header className={styles.topbar}>
-        <a href="/" className={styles.brand} aria-label="CAP Admin home"><span className={styles.brandMark}>C</span><span><strong>CAP Admin</strong><small>PROGRAM OPERATIONS</small></span></a>
-        <div className={styles.topbarRight}><span className={styles.previewTag}>FRONTEND PREVIEW · SAMPLE DATA</span><a className={styles.siteLink} href="/">View public site ↗</a><button className={styles.avatar} aria-label="Admin account">A</button></div>
+        <Link href="/" className={styles.brand} aria-label="CAP Admin home"><span className={styles.brandMark}>C</span><span><strong>CAP Admin</strong><small>PROGRAM OPERATIONS</small></span></Link>
+        <div className={styles.topbarRight}><span className={styles.previewTag}>FRONTEND PREVIEW · SAMPLE DATA</span><Link className={styles.siteLink} href="/">View public site ↗</Link><button className={styles.avatar} aria-label="Admin account">A</button></div>
       </header>
 
       <div className={styles.layout}>
