@@ -75,9 +75,11 @@ export default function Home() {
     if (!match) return;
     const group = faqGroups.find((item) => item.id === match[1]);
     if (group) {
-      setActiveGroup(group.id);
-      setOpenQuestions([`${group.id}-0`]);
-      window.setTimeout(() => faqRef.current?.scrollIntoView(), 100);
+      window.setTimeout(() => {
+        setActiveGroup(group.id);
+        setOpenQuestions([`${group.id}-0`]);
+        faqRef.current?.scrollIntoView();
+      }, 100);
     }
   }, []);
 
