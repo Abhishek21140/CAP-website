@@ -30,8 +30,8 @@ async function run() {
     try {
       await sql.unsafe(`ALTER TABLE public.${t} SET SCHEMA cap;`);
       console.log(`✓ Moved public.${t} -> cap.${t}`);
-    } catch (err: any) {
-      console.log(`- Table ${t}:`, err.message);
+    } catch (err: unknown) {
+      console.log(`- Table ${t}:`, err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -46,8 +46,8 @@ async function run() {
     try {
       await sql.unsafe(`ALTER FUNCTION public.${f}() SET SCHEMA cap;`);
       console.log(`✓ Moved function public.${f} -> cap.${f}`);
-    } catch (err: any) {
-      // It may not exist or may have signature
+    } catch {
+      // It may not exist or may have different signature
     }
   }
 
