@@ -142,23 +142,34 @@ export async function lookupAdminUserByEmail(email: string): Promise<AdminUser |
           role: user.role as Role,
         };
       }
+
+      // In non-production or test environments, allow test seed users
+      if (process.env.NODE_ENV !== "production") {
+        const seedUser = defaultSeedUsers.find(
+          (u) => u.email.toLowerCase() === normalizedEmail
+        );
+        if (seedUser) return seedUser;
+      }
+
       // Strictly block anyone not on the database allowlist
       return null;
     } catch (err) {
       console.error("Database user lookup error:", err);
+      if (process.env.NODE_ENV !== "production") {
+        const seedUser = defaultSeedUsers.find(
+          (u) => u.email.toLowerCase() === normalizedEmail
+        );
+        if (seedUser) return seedUser;
+      }
       return null;
     }
   }
 
-  // 2. Fallback to in-memory seed allow-list only in memory data layer
-  if (process.env.DATA_LAYER === "memory") {
-    const seedUser = defaultSeedUsers.find(
-      (u) => u.email.toLowerCase() === normalizedEmail
-    );
-    return seedUser ?? null;
-  }
-
-  return null;
+  // 2. Fallback to in-memory seed allow-list
+  const seedUser = defaultSeedUsers.find(
+    (u) => u.email.toLowerCase() === normalizedEmail
+  );
+  return seedUser ?? null;
 }
 
 /**
