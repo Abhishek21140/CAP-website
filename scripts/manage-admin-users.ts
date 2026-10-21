@@ -24,7 +24,7 @@ async function main() {
       console.log("\n=== CAP ADMIN USERS ALLOWLIST ===");
       const users = await sql`
         SELECT id, name, email, role, is_active, created_at
-        FROM admin_users
+        FROM cap.admin_users
         ORDER BY role, name;
       `;
       if (users.length === 0) {
@@ -54,7 +54,7 @@ async function main() {
 
       const id = `admin-${crypto.randomUUID().slice(0, 8)}`;
       const [inserted] = await sql`
-        INSERT INTO admin_users (id, name, email, role, is_active, created_at)
+        INSERT INTO cap.admin_users (id, name, email, role, is_active, created_at)
         VALUES (${id}, ${name}, ${email}, ${role}, true, NOW())
         ON CONFLICT (email)
         DO UPDATE SET name = ${name}, role = ${role}, is_active = true
@@ -74,7 +74,7 @@ async function main() {
       }
 
       const res = await sql`
-        UPDATE admin_users SET is_active = false WHERE lower(email) = ${email} RETURNING *;
+        UPDATE cap.admin_users SET is_active = false WHERE lower(email) = ${email} RETURNING *;
       `;
       if (res.length === 0) {
         console.log(`User with email "${email}" not found.`);

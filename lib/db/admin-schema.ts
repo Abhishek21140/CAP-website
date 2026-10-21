@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
-  pgTable,
+  pgSchema,
   text,
   varchar,
   integer,
@@ -13,8 +13,11 @@ import {
   check,
 } from "drizzle-orm/pg-core";
 
+// Define the 'cap' schema namespace
+export const capSchema = pgSchema("cap");
+
 // 1. Admin users (allow-list + roles). PRD Section 10: Admin User
-export const adminUsers = pgTable(
+export const adminUsers = capSchema.table(
   "admin_users",
   {
     id: varchar("id", { length: 64 }).primaryKey(),
@@ -28,7 +31,7 @@ export const adminUsers = pgTable(
 );
 
 // 2. Core participants
-export const participants = pgTable(
+export const participants = capSchema.table(
   "participants",
   {
     id: varchar("id", { length: 36 }).primaryKey(), // display ID e.g. "CAP-0001"
@@ -54,7 +57,7 @@ export const participants = pgTable(
 );
 
 // 3. Tasks with configurable penalty policies
-export const tasks = pgTable(
+export const tasks = capSchema.table(
   "tasks",
   {
     id: varchar("id", { length: 64 }).primaryKey(),
@@ -79,7 +82,7 @@ export const tasks = pgTable(
 );
 
 // 4. Materialised assignment list. Needed to derive "Missing" and the 312-row "All" scope.
-export const taskAssignments = pgTable(
+export const taskAssignments = capSchema.table(
   "task_assignments",
   {
     taskId: varchar("task_id", { length: 64 })
@@ -99,7 +102,7 @@ export const taskAssignments = pgTable(
 );
 
 // 5. Submissions: latest state and result. "Missing" is NOT a stored status.
-export const submissions = pgTable(
+export const submissions = capSchema.table(
   "submissions",
   {
     id: varchar("id", { length: 64 }).primaryKey(),
@@ -143,7 +146,7 @@ export const submissions = pgTable(
 );
 
 // 6. Submission versions (append-only)
-export const submissionVersions = pgTable(
+export const submissionVersions = capSchema.table(
   "submission_versions",
   {
     id: varchar("id", { length: 64 }).primaryKey(),
@@ -161,7 +164,7 @@ export const submissionVersions = pgTable(
 );
 
 // 7. Review decisions (append-only). Decisions are never overwritten.
-export const reviews = pgTable(
+export const reviews = capSchema.table(
   "reviews",
   {
     id: varchar("id", { length: 64 }).primaryKey(),
@@ -188,7 +191,7 @@ export const reviews = pgTable(
 );
 
 // 8. Extensions (Rule 7). One ACTIVE extension per (task, participant); groups are expanded per participant on grant.
-export const extensions = pgTable(
+export const extensions = capSchema.table(
   "extensions",
   {
     id: varchar("id", { length: 64 }).primaryKey(),
@@ -218,7 +221,7 @@ export const extensions = pgTable(
 );
 
 // 9. Score adjustments (Super Admin only; feeds totals)
-export const scoreAdjustments = pgTable(
+export const scoreAdjustments = capSchema.table(
   "score_adjustments",
   {
     id: varchar("id", { length: 64 }).primaryKey(),
@@ -237,7 +240,7 @@ export const scoreAdjustments = pgTable(
 );
 
 // 10. Leaderboard state (single row, id = 1). The review service NEVER writes published_snapshot.
-export const leaderboardState = pgTable(
+export const leaderboardState = capSchema.table(
   "leaderboard_state",
   {
     id: integer("id").primaryKey().default(1),
@@ -253,7 +256,7 @@ export const leaderboardState = pgTable(
 );
 
 // 11. History / Audit Log (append-only)
-export const historyAuditLogs = pgTable(
+export const historyAuditLogs = capSchema.table(
   "history_audit_logs",
   {
     id: varchar("id", { length: 64 }).primaryKey(),

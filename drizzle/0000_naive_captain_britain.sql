@@ -160,22 +160,22 @@ CREATE TABLE "tasks" (
 	CONSTRAINT "tasks_max_chk" CHECK ("tasks"."max_points" > 0)
 );
 --> statement-breakpoint
-ALTER TABLE "extensions" ADD CONSTRAINT "extensions_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."tasks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "extensions" ADD CONSTRAINT "extensions_participant_id_participants_id_fk" FOREIGN KEY ("participant_id") REFERENCES "public"."participants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "extensions" ADD CONSTRAINT "extensions_granted_by_admin_users_id_fk" FOREIGN KEY ("granted_by") REFERENCES "public"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "extensions" ADD CONSTRAINT "extensions_revoked_by_admin_users_id_fk" FOREIGN KEY ("revoked_by") REFERENCES "public"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "leaderboard_state" ADD CONSTRAINT "leaderboard_state_frozen_by_admin_users_id_fk" FOREIGN KEY ("frozen_by") REFERENCES "public"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "reviews" ADD CONSTRAINT "reviews_submission_id_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "public"."submissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "reviews" ADD CONSTRAINT "reviews_reviewer_id_admin_users_id_fk" FOREIGN KEY ("reviewer_id") REFERENCES "public"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "score_adjustments" ADD CONSTRAINT "score_adjustments_participant_id_participants_id_fk" FOREIGN KEY ("participant_id") REFERENCES "public"."participants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "score_adjustments" ADD CONSTRAINT "score_adjustments_submission_id_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "public"."submissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "score_adjustments" ADD CONSTRAINT "score_adjustments_adjusted_by_admin_users_id_fk" FOREIGN KEY ("adjusted_by") REFERENCES "public"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "submission_versions" ADD CONSTRAINT "submission_versions_submission_id_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "public"."submissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "submissions" ADD CONSTRAINT "submissions_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."tasks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "submissions" ADD CONSTRAINT "submissions_participant_id_participants_id_fk" FOREIGN KEY ("participant_id") REFERENCES "public"."participants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "submissions" ADD CONSTRAINT "submissions_assigned_reviewer_id_admin_users_id_fk" FOREIGN KEY ("assigned_reviewer_id") REFERENCES "public"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_assignments" ADD CONSTRAINT "task_assignments_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "public"."tasks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "task_assignments" ADD CONSTRAINT "task_assignments_participant_id_participants_id_fk" FOREIGN KEY ("participant_id") REFERENCES "public"."participants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "extensions" ADD CONSTRAINT "extensions_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "cap"."tasks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "extensions" ADD CONSTRAINT "extensions_participant_id_participants_id_fk" FOREIGN KEY ("participant_id") REFERENCES "cap"."participants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "extensions" ADD CONSTRAINT "extensions_granted_by_admin_users_id_fk" FOREIGN KEY ("granted_by") REFERENCES "cap"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "extensions" ADD CONSTRAINT "extensions_revoked_by_admin_users_id_fk" FOREIGN KEY ("revoked_by") REFERENCES "cap"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "leaderboard_state" ADD CONSTRAINT "leaderboard_state_frozen_by_admin_users_id_fk" FOREIGN KEY ("frozen_by") REFERENCES "cap"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_submission_id_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "cap"."submissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_reviewer_id_admin_users_id_fk" FOREIGN KEY ("reviewer_id") REFERENCES "cap"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "score_adjustments" ADD CONSTRAINT "score_adjustments_participant_id_participants_id_fk" FOREIGN KEY ("participant_id") REFERENCES "cap"."participants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "score_adjustments" ADD CONSTRAINT "score_adjustments_submission_id_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "cap"."submissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "score_adjustments" ADD CONSTRAINT "score_adjustments_adjusted_by_admin_users_id_fk" FOREIGN KEY ("adjusted_by") REFERENCES "cap"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "submission_versions" ADD CONSTRAINT "submission_versions_submission_id_submissions_id_fk" FOREIGN KEY ("submission_id") REFERENCES "cap"."submissions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "submissions" ADD CONSTRAINT "submissions_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "cap"."tasks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "submissions" ADD CONSTRAINT "submissions_participant_id_participants_id_fk" FOREIGN KEY ("participant_id") REFERENCES "cap"."participants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "submissions" ADD CONSTRAINT "submissions_assigned_reviewer_id_admin_users_id_fk" FOREIGN KEY ("assigned_reviewer_id") REFERENCES "cap"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "task_assignments" ADD CONSTRAINT "task_assignments_task_id_tasks_id_fk" FOREIGN KEY ("task_id") REFERENCES "cap"."tasks"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "task_assignments" ADD CONSTRAINT "task_assignments_participant_id_participants_id_fk" FOREIGN KEY ("participant_id") REFERENCES "cap"."participants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "extensions_active_uq" ON "extensions" USING btree ("task_id","participant_id") WHERE "extensions"."revoked_at" is null;--> statement-breakpoint
 CREATE INDEX "audit_entity_idx" ON "history_audit_logs" USING btree ("entity","entity_id","timestamp");--> statement-breakpoint
 CREATE INDEX "participants_college_idx" ON "participants" USING btree ("college");--> statement-breakpoint

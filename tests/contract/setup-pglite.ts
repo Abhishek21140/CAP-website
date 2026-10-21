@@ -8,6 +8,7 @@ import { DrizzleRepository } from "../../lib/repositories/drizzle/drizzle-reposi
 
 export async function createTestDrizzleRepository(): Promise<{ repo: DrizzleRepository; pglite: PGlite }> {
   const pglite = new PGlite({ extensions: { pg_trgm } });
+  await pglite.exec("CREATE SCHEMA IF NOT EXISTS cap; SET search_path TO cap, public;");
   const db = drizzle(pglite, { schema });
 
   // Run all migrations through Drizzle's official migration runner and journal

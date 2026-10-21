@@ -2,6 +2,7 @@
  * ╔══════════════════════════════════════════════════════════════════╗
  * ║  CAP PLATFORM — DATABASE SCHEMA (Drizzle ORM / PostgreSQL)     ║
  * ║  Complete data model aligned with PRD v1.1 Section 10           ║
+ * ║  All tables and enums namespaced under 'cap' schema              ║
  * ╚══════════════════════════════════════════════════════════════════╝
  *
  * Design invariants enforced by this schema:
@@ -15,8 +16,7 @@
  */
 
 import {
-  pgTable,
-  pgEnum,
+  pgSchema,
   uuid,
   text,
   integer,
@@ -25,6 +25,12 @@ import {
   jsonb,
   unique,
 } from "drizzle-orm/pg-core";
+
+/* ------------------------------------------------------------------ */
+/*  SCHEMA NAMESPACE                                                  */
+/* ------------------------------------------------------------------ */
+
+export const capSchema = pgSchema("cap");
 
 /* ------------------------------------------------------------------ */
 /*  SYSTEM CONSTANTS                                                   */
@@ -36,9 +42,9 @@ export const SYSTEM_ADMIN_UUID = "00000000-0000-0000-0000-000000000000";
 /*  ENUMS                                                              */
 /* ------------------------------------------------------------------ */
 
-export const taskTypeEnum = pgEnum("task_type", ["proof_link", "quiz"]);
+export const taskTypeEnum = capSchema.enum("task_type", ["proof_link", "quiz"]);
 
-export const taskStatusEnum = pgEnum("task_status", [
+export const taskStatusEnum = capSchema.enum("task_status", [
   "draft",
   "scheduled",
   "live",
@@ -46,33 +52,33 @@ export const taskStatusEnum = pgEnum("task_status", [
   "archived",
 ]);
 
-export const participantStatusEnum = pgEnum("participant_status", [
+export const participantStatusEnum = capSchema.enum("participant_status", [
   "pending",
   "active",
   "inactive",
 ]);
 
-export const participantTierEnum = pgEnum("participant_tier", [
+export const participantTierEnum = capSchema.enum("participant_tier", [
   "recruit",
   "defender",
   "avenger",
   "legend",
 ]);
 
-export const reviewStatusEnum = pgEnum("review_status", [
+export const reviewStatusEnum = capSchema.enum("review_status", [
   "pending",
   "approved",
   "needs_changes",
   "rejected",
 ]);
 
-export const leaderboardStatusEnum = pgEnum("leaderboard_status", [
+export const leaderboardStatusEnum = capSchema.enum("leaderboard_status", [
   "live",
   "frozen",
   "final",
 ]);
 
-export const adminRoleEnum = pgEnum("admin_role", [
+export const adminRoleEnum = capSchema.enum("admin_role", [
   "super_admin",
   "reviewer",
   "viewer",
@@ -82,7 +88,7 @@ export const adminRoleEnum = pgEnum("admin_role", [
 /*  ADMIN USERS (PRD Section 10 & 6.2 G)                              */
 /* ------------------------------------------------------------------ */
 
-export const adminUsers = pgTable("admin_users", {
+export const adminUsers = capSchema.table("admin_users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
   role: adminRoleEnum("role").notNull(),
@@ -95,7 +101,7 @@ export const adminUsers = pgTable("admin_users", {
 /*  TASKS                                                              */
 /* ------------------------------------------------------------------ */
 
-export const tasks = pgTable("tasks", {
+export const tasks = capSchema.table("tasks", {
   id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   description: text("description"),
@@ -138,7 +144,7 @@ export const tasks = pgTable("tasks", {
 /*  PARTICIPANTS                                                       */
 /* ------------------------------------------------------------------ */
 
-export const participants = pgTable("participants", {
+export const participants = capSchema.table("participants", {
   id: uuid("id").primaryKey().defaultRandom(),
 
   /** Foreign key to Supabase Auth — nullable until auth is wired. */
@@ -194,7 +200,7 @@ export const participants = pgTable("participants", {
 /*  SUBMISSIONS                                                        */
 /* ------------------------------------------------------------------ */
 
-export const submissions = pgTable(
+export const submissions = capSchema.table(
   "submissions",
   {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -274,7 +280,7 @@ export const submissions = pgTable(
 /*  SUBMISSION VERSIONS (Append-only version history - PRD 6.2 F & 10)  */
 /* ------------------------------------------------------------------ */
 
-export const submissionVersions = pgTable("submission_versions", {
+export const submissionVersions = capSchema.table("submission_versions", {
   id: uuid("id").primaryKey().defaultRandom(),
   submissionId: uuid("submission_id")
     .notNull()
@@ -289,7 +295,7 @@ export const submissionVersions = pgTable("submission_versions", {
 /*  REVIEWS (Append-only review decisions - PRD 6.2 F & 10)            */
 /* ------------------------------------------------------------------ */
 
-export const reviews = pgTable(
+export const reviews = capSchema.table(
   "reviews",
   {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -309,7 +315,7 @@ export const reviews = pgTable(
 /*  DEADLINE EXTENSIONS (PRD 8.2 Rule 7 & Acceptance #8)               */
 /* ------------------------------------------------------------------ */
 
-export const deadlineExtensions = pgTable("deadline_extensions", {
+export const deadlineExtensions = capSchema.table("deadline_extensions", {
   id: uuid("id").primaryKey().defaultRandom(),
   participantId: uuid("participant_id")
     .notNull()
@@ -344,7 +350,7 @@ export const deadlineExtensions = pgTable("deadline_extensions", {
 /*  SCORE ADJUSTMENTS (PRD 8.4)                                        */
 /* ------------------------------------------------------------------ */
 
-export const scoreAdjustments = pgTable("score_adjustments", {
+export const scoreAdjustments = capSchema.table("score_adjustments", {
   id: uuid("id").primaryKey().defaultRandom(),
   participantId: uuid("participant_id")
     .notNull()
@@ -367,7 +373,7 @@ export const scoreAdjustments = pgTable("score_adjustments", {
 /*  LEADERBOARD STATE (PRD 8.4)                                        */
 /* ------------------------------------------------------------------ */
 
-export const leaderboardState = pgTable("leaderboard_state", {
+export const leaderboardState = capSchema.table("leaderboard_state", {
   id: uuid("id").primaryKey().defaultRandom(),
 
   status: leaderboardStatusEnum("status").notNull().default("live"),
@@ -397,7 +403,7 @@ export const leaderboardState = pgTable("leaderboard_state", {
 /*  AUDIT LOG (append-only, immutable - PRD 6.3 & Acceptance #10)      */
 /* ------------------------------------------------------------------ */
 
-export const auditLog = pgTable("audit_log", {
+export const auditLog = capSchema.table("audit_log", {
   id: uuid("id").primaryKey().defaultRandom(),
 
   /** Domain entity: 'submission' | 'participant' | 'leaderboard' | 'extension' … */
