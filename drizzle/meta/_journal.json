@@ -5,8 +5,22 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1792444738595,
-      "tag": "0000_amused_lester",
+      "when": 1792398032328,
+      "tag": "0000_naive_captain_britain",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792398032329,
+      "tag": "0001_constraints_and_immutability",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792398032330,
+      "tag": "0002_trgm_search_and_policy",
       "breakpoints": true
     }
   ]

@@ -7,19 +7,25 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx tsx lib/leaderboard/__tests__/engine.test.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
+    "test:engine": "npx tsx lib/leaderboard/__tests__/engine.test.ts",
+    "test:perf": "node --import tsx --test \"tests/performance/**/*.test.ts\"",
+    "test:e2e": "playwright test",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.117.3",
     "drizzle-orm": "^0.45.4",
     "next": "16.4.1",
     "postgres": "^3.4.9",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -28,6 +34,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
