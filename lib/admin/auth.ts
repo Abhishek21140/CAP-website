@@ -11,7 +11,7 @@ import {
   verifySignedSessionToken,
 } from "./session";
 import { sql } from "drizzle-orm";
-import * as schema from "@/lib/db/schema";
+import * as schema from "@/lib/db/admin-schema";
 import { getPostgresDb } from "@/lib/db/client";
 
 export const CAPABILITIES = {

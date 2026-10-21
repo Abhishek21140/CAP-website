@@ -70,17 +70,23 @@ export default function Home() {
   const worldtreeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const hash = window.location.hash;
-    const match = hash.match(/^#faq-(.+)$/);
-    if (!match) return;
-    const group = faqGroups.find((item) => item.id === match[1]);
-    if (group) {
-      window.setTimeout(() => {
+    const handleHash = () => {
+      const hash = window.location.hash;
+      const match = hash.match(/^#faq-(.+)$/);
+      if (!match) return;
+      const group = faqGroups.find((item) => item.id === match[1]);
+      if (group) {
         setActiveGroup(group.id);
         setOpenQuestions([`${group.id}-0`]);
-        faqRef.current?.scrollIntoView();
-      }, 100);
+        window.setTimeout(() => faqRef.current?.scrollIntoView(), 100);
+      }
+    };
+
+    window.addEventListener("hashchange", handleHash);
+    if (window.location.hash) {
+      queueMicrotask(handleHash);
     }
+    return () => window.removeEventListener("hashchange", handleHash);
   }, []);
 
   useEffect(() => {

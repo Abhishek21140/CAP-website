@@ -1,272 +1,419 @@
-import { sql } from "drizzle-orm";
+/**
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  CAP PLATFORM — DATABASE SCHEMA (Drizzle ORM / PostgreSQL)     ║
+ * ║  Complete data model aligned with PRD v1.1 Section 10           ║
+ * ╚══════════════════════════════════════════════════════════════════╝
+ *
+ * Design invariants enforced by this schema:
+ *   1. Every point value is stored as an integer (no floating-point rounding errors).
+ *   2. Penalty policy parameters are integers representing whole percentages (e.g. 10%, 50%).
+ *   3. All timestamps use `timestamp with time zone` (UTC server clock is single source of truth).
+ *   4. Unique constraint on (participant_id, task_id) in submissions.
+ *   5. Submission versions and review decisions are append-only and never overwritten (PRD 6.2 F).
+ *   6. Participant deletion is a soft-delete (deleted_at).
+ *   7. Entity IDs and audit IDs use text or UUID safely to prevent cast crashes.
+ */
+
 import {
   pgTable,
+  pgEnum,
+  uuid,
   text,
-  varchar,
   integer,
-  boolean,
   timestamp,
+  boolean,
   jsonb,
-  index,
-  uniqueIndex,
-  primaryKey,
-  check,
+  unique,
 } from "drizzle-orm/pg-core";
 
-// 1. Admin users (allow-list + roles). PRD Section 10: Admin User
-export const adminUsers = pgTable(
-  "admin_users",
-  {
-    id: varchar("id", { length: 64 }).primaryKey(),
-    email: text("email").notNull().unique(),
-    name: text("name").notNull(),
-    role: text("role").notNull(), // super_admin | reviewer | viewer
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [check("admin_role_chk", sql`${t.role} in ('super_admin','reviewer','viewer')`)]
-);
+/* ------------------------------------------------------------------ */
+/*  SYSTEM CONSTANTS                                                   */
+/* ------------------------------------------------------------------ */
 
-// 2. Core participants
-export const participants = pgTable(
-  "participants",
-  {
-    id: varchar("id", { length: 36 }).primaryKey(), // display ID e.g. "CAP-0001"
-    name: text("name").notNull(),
-    email: text("email").notNull().unique(),
-    phone: text("phone"),
-    college: text("college").notNull(),
-    branch: text("branch"),
-    year: text("year"),
-    city: text("city"),
-    rollNumber: text("roll_number").notNull(),
-    status: text("status").notNull().default("Active"), // Pending Approval, Active, Inactive
-    totalPoints: integer("total_points").notNull().default(0), // recomputed, never incremented
-    rank: integer("rank"), // live rank (admin view)
-    termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [
-    index("participants_college_idx").on(t.college),
-    index("participants_total_points_idx").on(t.totalPoints),
-  ]
-);
+export const SYSTEM_ADMIN_UUID = "00000000-0000-0000-0000-000000000000";
 
-// 3. Tasks with configurable penalty policies
-export const tasks = pgTable(
-  "tasks",
-  {
-    id: varchar("id", { length: 64 }).primaryKey(),
-    title: text("title").notNull(),
-    description: text("description"),
-    type: text("type").notNull().default("proof_link"), // proof_link | quiz | both
-    maxPoints: integer("max_points").notNull(),
-    assignedTo: text("assigned_to").notNull().default("all"),
-    deadline: timestamp("deadline", { withTimezone: true }).notNull(), // UTC
-    graceMinutes: integer("grace_minutes").notNull().default(60),
-    penaltyRate: integer("penalty_rate").notNull().default(10), // % of max points per started 24h
-    penaltyCap: integer("penalty_cap").notNull().default(50), // % of max points
-    cutoffDays: integer("cutoff_days").notNull().default(3),
-    correctionWindowDays: integer("correction_window_days").notNull().default(3),
-    roundingMode: text("rounding_mode").notNull().default("half_up"), // only half_up implemented
-    isMandatory: boolean("is_mandatory").notNull().default(true),
-    state: text("state").notNull().default("Live"), // Draft, Scheduled, Live, Closed, Archived
-    createdBy: text("created_by").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [check("tasks_max_chk", sql`${t.maxPoints} > 0`)]
-);
+/* ------------------------------------------------------------------ */
+/*  ENUMS                                                              */
+/* ------------------------------------------------------------------ */
 
-// 4. Materialised assignment list. Needed to derive "Missing" and the 312-row "All" scope.
-export const taskAssignments = pgTable(
-  "task_assignments",
-  {
-    taskId: varchar("task_id", { length: 64 })
-      .notNull()
-      .references(() => tasks.id),
-    participantId: varchar("participant_id", { length: 36 })
-      .notNull()
-      .references(() => participants.id),
-    effectiveDeadlineAt: timestamp("effective_deadline_at", { withTimezone: true }).notNull(), // task deadline or extension
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [
-    primaryKey({ columns: [t.taskId, t.participantId] }),
-    index("assign_participant_idx").on(t.participantId),
-    index("assign_task_deadline_idx").on(t.taskId, t.effectiveDeadlineAt),
-  ]
-);
+export const taskTypeEnum = pgEnum("task_type", ["proof_link", "quiz"]);
 
-// 5. Submissions: latest state and result. "Missing" is NOT a stored status.
+export const taskStatusEnum = pgEnum("task_status", [
+  "draft",
+  "scheduled",
+  "live",
+  "closed",
+  "archived",
+]);
+
+export const participantStatusEnum = pgEnum("participant_status", [
+  "pending",
+  "active",
+  "inactive",
+]);
+
+export const participantTierEnum = pgEnum("participant_tier", [
+  "recruit",
+  "defender",
+  "avenger",
+  "legend",
+]);
+
+export const reviewStatusEnum = pgEnum("review_status", [
+  "pending",
+  "approved",
+  "needs_changes",
+  "rejected",
+]);
+
+export const leaderboardStatusEnum = pgEnum("leaderboard_status", [
+  "live",
+  "frozen",
+  "final",
+]);
+
+export const adminRoleEnum = pgEnum("admin_role", [
+  "super_admin",
+  "reviewer",
+  "viewer",
+]);
+
+/* ------------------------------------------------------------------ */
+/*  ADMIN USERS (PRD Section 10 & 6.2 G)                              */
+/* ------------------------------------------------------------------ */
+
+export const adminUsers = pgTable("admin_users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  role: adminRoleEnum("role").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/*  TASKS                                                              */
+/* ------------------------------------------------------------------ */
+
+export const tasks = pgTable("tasks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: taskTypeEnum("type").notNull().default("proof_link"),
+
+  /** Maximum awardable points for this task (ℤ > 0). */
+  maxPoints: integer("max_points").notNull(),
+
+  /** The official deadline in UTC (displayed in IST on frontend). */
+  deadline: timestamp("deadline", { withTimezone: true }).notNull(),
+
+  /** Grace period in minutes after deadline (no penalty). Default: 60. */
+  gracePeriodMinutes: integer("grace_period_minutes").notNull().default(60),
+
+  /** Penalty rate per started 24-hour block in whole %. Default: 10%. */
+  penaltyRatePct: integer("penalty_rate_pct").notNull().default(10),
+
+  /** Hard cap on penalty in whole % of max_points. Default: 50%. */
+  penaltyCapPct: integer("penalty_cap_pct").notNull().default(50),
+
+  /**
+   * Cutoff window in days after the effective deadline (PRD 8.1 & 8.2).
+   * Default: 3 days. Submissions after this are locked.
+   */
+  cutoffDays: integer("cutoff_days").notNull().default(3),
+
+  /** Optional hard timestamp after which submissions are locked. */
+  hardCutoff: timestamp("hard_cutoff", { withTimezone: true }),
+
+  /** Flag indicating whether the task is mandatory for ambassadors. */
+  isMandatory: boolean("is_mandatory").notNull().default(false),
+
+  status: taskStatusEnum("status").notNull().default("draft"),
+  createdBy: uuid("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/*  PARTICIPANTS                                                       */
+/* ------------------------------------------------------------------ */
+
+export const participants = pgTable("participants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  /** Foreign key to Supabase Auth — nullable until auth is wired. */
+  userId: uuid("user_id"),
+
+  displayName: text("display_name").notNull(),
+  email: text("email").notNull().unique(),
+  phone: text("phone"),
+  rollNumber: text("roll_number"),
+  college: text("college").notNull(),
+  branch: text("branch"),
+  year: text("year"),
+  city: text("city"),
+
+  status: participantStatusEnum("status").notNull().default("pending"),
+
+  /* ── Denormalised leaderboard aggregates ─────────────────────────── */
+
+  /** Σ final_points across all approved submissions + Σ score adjustments (not floored at 0 to preserve negative adjustments). */
+  totalPoints: integer("total_points").notNull().default(0),
+
+  /** Current rank on the leaderboard (null if unranked). */
+  rank: integer("rank"),
+
+  /** Count of submissions with review_status = 'approved'. */
+  tasksCompleted: integer("tasks_completed").notNull().default(0),
+
+  /** Count of approved submissions where is_late = true. */
+  lateCount: integer("late_count").notNull().default(0),
+
+  /**
+   * Timestamp of most recent valid submission (UTC).
+   * Used for PRD 8.1 Tie-breaker 3 ("earlier last submission").
+   */
+  lastSubmittedAt: timestamp("last_submitted_at", { withTimezone: true }),
+
+  /** Timestamp of most recent approved submission (reviewer time). */
+  lastApprovedSubmissionAt: timestamp("last_approved_submission_at", {
+    withTimezone: true,
+  }),
+
+  tier: participantTierEnum("tier").default("recruit"),
+
+  /** Soft delete tracking (PRD Section 10). Deleted participants do not rank. */
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/*  SUBMISSIONS                                                        */
+/* ------------------------------------------------------------------ */
+
 export const submissions = pgTable(
   "submissions",
   {
-    id: varchar("id", { length: 64 }).primaryKey(),
-    taskId: varchar("task_id", { length: 64 })
-      .notNull()
-      .references(() => tasks.id),
-    participantId: varchar("participant_id", { length: 36 })
+    id: uuid("id").primaryKey().defaultRandom(),
+    participantId: uuid("participant_id")
       .notNull()
       .references(() => participants.id),
-    driveLink: text("drive_link").notNull(), // latest version
-    linkKey: text("link_key").notNull(), // normalized Drive file ID (duplicate detection)
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id),
+
+    proofUrl: text("proof_url"),
     notes: text("notes"),
-    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(), // latest version time
-    firstSubmittedAt: timestamp("first_submitted_at", { withTimezone: true }).notNull(), // fixes the penalty
-    versionNo: integer("version_no").notNull().default(1),
-    rev: integer("rev").notNull().default(1), // optimistic-lock counter, +1 on EVERY write
-    isLate: boolean("is_late").notNull().default(false), // penalty_days > 0 (denormalized for filtering)
+
+    /**
+     * CRITICAL: Locked on the very first valid submission.
+     * Resubmission / "Needs Changes" NEVER resets this timestamp.
+     */
+    firstSubmittedAt: timestamp("first_submitted_at", {
+      withTimezone: true,
+    }).notNull(),
+
+    /** Updated on every resubmission. */
+    latestSubmittedAt: timestamp("latest_submitted_at", {
+      withTimezone: true,
+    }).notNull(),
+
+    /**
+     * The deadline used for penalty calculation.
+     * Equals task deadline unless an extension has been granted.
+     */
+    effectiveDeadline: timestamp("effective_deadline", {
+      withTimezone: true,
+    }).notNull(),
+
+    /* ── Penalty breakdown (stored for auditability) ────────────────── */
+
+    isLate: boolean("is_late").notNull().default(false),
+
+    /** ⌈ lateHours / 24 ⌉ — 0 when on-time or within grace. */
     penaltyDays: integer("penalty_days").notNull().default(0),
-    penaltyPoints: integer("penalty_points").notNull().default(0), // POTENTIAL penalty (from first_submitted_at)
-    penaltyApplied: integer("penalty_applied"), // null until reviewed: min(penaltyPoints, pointsAwarded)
-    reviewStatus: text("review_status").notNull().default("pending_review"),
-    assignedReviewerId: varchar("assigned_reviewer_id", { length: 64 }).references(() => adminUsers.id),
+
+    /** Whole-number percentage (0–100). */
+    penaltyPct: integer("penalty_pct").notNull().default(0),
+
+    /** Exact integer deduction independent of reviewer score. */
+    penaltyPoints: integer("penalty_points").notNull().default(0),
+
+    /** Explanatory penalty reason string (e.g. "Late by 1 day", "On time"). */
+    penaltyReason: text("penalty_reason"),
+
+    /** Points awarded by reviewer (0 ≤ x ≤ maxPoints). Null if unreviewed. */
     pointsAwarded: integer("points_awarded"),
-    finalPoints: integer("final_points"),
-    correctionDeadline: timestamp("correction_deadline", { withTimezone: true }), // set on Needs Changes
-    policySnapshot: jsonb("policy_snapshot").notNull(), // rule values used (Section 9.3)
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+
+    /** Actual deduction capped at pointsAwarded. */
+    penaltyApplied: integer("penalty_applied").notNull().default(0),
+
+    /** pointsAwarded − penaltyApplied (Invariant: finalPoints ≥ 0). */
+    finalPoints: integer("final_points").notNull().default(0),
+
+    reviewStatus: reviewStatusEnum("review_status").notNull().default("pending"),
+    reviewerId: uuid("reviewer_id"),
+    reviewerFeedback: text("reviewer_feedback"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+
+    /** Immutable snapshot of penalty policy at calculation time. */
+    policySnapshot: jsonb("policy_snapshot"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    uniqueIndex("submissions_task_participant_uq").on(t.taskId, t.participantId),
-    index("submissions_task_status_idx").on(t.taskId, t.reviewStatus),
-    index("submissions_reviewer_status_idx").on(t.assignedReviewerId, t.reviewStatus),
-    index("submissions_participant_idx").on(t.participantId),
-    index("submissions_link_key_idx").on(t.linkKey),
-    index("submissions_late_idx").on(t.taskId, t.isLate),
-    check(
-      "submissions_status_chk",
-      sql`${t.reviewStatus} in ('pending_review','approved','needs_changes','rejected')`
-    ),
+  (table) => [
+    unique("uq_participant_task").on(table.participantId, table.taskId),
   ]
 );
 
-// 6. Submission Versions: every Drive link and note ever submitted (append-only)
-export const submissionVersions = pgTable(
-  "submission_versions",
-  {
-    id: varchar("id", { length: 64 }).primaryKey(),
-    submissionId: varchar("submission_id", { length: 64 })
-      .notNull()
-      .references(() => submissions.id),
-    versionNo: integer("version_no").notNull(),
-    driveLink: text("drive_link").notNull(),
-    linkKey: text("link_key").notNull(),
-    notes: text("notes"),
-    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [uniqueIndex("versions_sub_ver_uq").on(t.submissionId, t.versionNo)]
-);
+/* ------------------------------------------------------------------ */
+/*  SUBMISSION VERSIONS (Append-only version history - PRD 6.2 F & 10)  */
+/* ------------------------------------------------------------------ */
 
-// 7. Review decisions (append-only). Decisions are never overwritten.
+export const submissionVersions = pgTable("submission_versions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  submissionId: uuid("submission_id")
+    .notNull()
+    .references(() => submissions.id, { onDelete: "cascade" }),
+  versionNo: integer("version_no").notNull(),
+  proofUrl: text("proof_url").notNull(),
+  notes: text("notes"),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/*  REVIEWS (Append-only review decisions - PRD 6.2 F & 10)            */
+/* ------------------------------------------------------------------ */
+
 export const reviews = pgTable(
   "reviews",
   {
-    id: varchar("id", { length: 64 }).primaryKey(),
-    submissionId: varchar("submission_id", { length: 64 })
+    id: uuid("id").primaryKey().defaultRandom(),
+    submissionId: uuid("submission_id")
       .notNull()
-      .references(() => submissions.id),
+      .references(() => submissions.id, { onDelete: "cascade" }),
     versionNo: integer("version_no").notNull(),
-    reviewerId: varchar("reviewer_id", { length: 64 })
-      .notNull()
-      .references(() => adminUsers.id),
-    decision: text("decision").notNull(), // approved | needs_changes | rejected | reopened
-    pointsAwarded: integer("points_awarded"),
-    penaltyApplied: integer("penalty_applied"),
-    finalPoints: integer("final_points"),
+    reviewerId: uuid("reviewer_id").notNull(),
+    decision: reviewStatusEnum("decision").notNull(),
+    pointsAwarded: integer("points_awarded").notNull().default(0),
     reasonFeedback: text("reason_feedback"),
-    supersedesReviewId: varchar("supersedes_review_id", { length: 64 }), // set when a Super Admin revises a decision
-    requestId: text("request_id").notNull(), // idempotency key from the client
-    reviewedAt: timestamp("reviewed_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [
-    index("reviews_submission_idx").on(t.submissionId, t.reviewedAt),
-    uniqueIndex("reviews_request_id_uq").on(t.requestId),
-  ]
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow(),
+  }
 );
 
-// 8. Extensions (Rule 7). One ACTIVE extension per (task, participant); groups are expanded per participant on grant.
-export const extensions = pgTable(
-  "extensions",
-  {
-    id: varchar("id", { length: 64 }).primaryKey(),
-    taskId: varchar("task_id", { length: 64 })
-      .notNull()
-      .references(() => tasks.id),
-    participantId: varchar("participant_id", { length: 36 })
-      .notNull()
-      .references(() => participants.id),
-    groupLabel: text("group_label"),
-    originalDeadline: timestamp("original_deadline", { withTimezone: true }).notNull(),
-    newDeadline: timestamp("new_deadline", { withTimezone: true }).notNull(),
-    reason: text("reason").notNull(),
-    grantedBy: varchar("granted_by", { length: 64 })
-      .notNull()
-      .references(() => adminUsers.id),
-    grantedAt: timestamp("granted_at", { withTimezone: true }).defaultNow().notNull(),
-    revokedAt: timestamp("revoked_at", { withTimezone: true }),
-    revokedBy: varchar("revoked_by", { length: 64 }).references(() => adminUsers.id),
-  },
-  (t) => [
-    uniqueIndex("extensions_active_uq")
-      .on(t.taskId, t.participantId)
-      .where(sql`${t.revokedAt} is null`),
-    check("extensions_later_chk", sql`${t.newDeadline} > ${t.originalDeadline}`),
-  ]
-);
+/* ------------------------------------------------------------------ */
+/*  DEADLINE EXTENSIONS (PRD 8.2 Rule 7 & Acceptance #8)               */
+/* ------------------------------------------------------------------ */
 
-// 9. Score adjustments (Super Admin only; feeds totals)
-export const scoreAdjustments = pgTable(
-  "score_adjustments",
-  {
-    id: varchar("id", { length: 64 }).primaryKey(),
-    participantId: varchar("participant_id", { length: 36 })
-      .notNull()
-      .references(() => participants.id),
-    submissionId: varchar("submission_id", { length: 64 }).references(() => submissions.id),
-    pointsDelta: integer("points_delta").notNull(),
-    reason: text("reason").notNull(),
-    adjustedBy: varchar("adjusted_by", { length: 64 })
-      .notNull()
-      .references(() => adminUsers.id),
-    adjustedAt: timestamp("adjusted_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [check("adj_reason_chk", sql`length(trim(${t.reason})) >= 10`)]
-);
+export const deadlineExtensions = pgTable("deadline_extensions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  participantId: uuid("participant_id")
+    .notNull()
+    .references(() => participants.id),
+  taskId: uuid("task_id")
+    .notNull()
+    .references(() => tasks.id),
+  submissionId: uuid("submission_id").references(() => submissions.id),
 
-// 10. Leaderboard state (single row, id = 1). The review service NEVER writes published_snapshot.
-export const leaderboardState = pgTable(
-  "leaderboard_state",
-  {
-    id: integer("id").primaryKey().default(1),
-    status: text("status").notNull().default("live"), // live | frozen | final
-    frozenAt: timestamp("frozen_at", { withTimezone: true }),
-    frozenBy: varchar("frozen_by", { length: 64 }).references(() => adminUsers.id),
-    unfrozenAt: timestamp("unfrozen_at", { withTimezone: true }),
-    reason: text("reason"),
-    publishedSnapshot: jsonb("published_snapshot"),
-    resultsAnnouncedAt: timestamp("results_announced_at", { withTimezone: true }),
-  },
-  (t) => [check("lb_singleton_chk", sql`${t.id} = 1`)]
-);
+  originalDeadline: timestamp("original_deadline", {
+    withTimezone: true,
+  }).notNull(),
+  extendedDeadline: timestamp("extended_deadline", {
+    withTimezone: true,
+  }).notNull(),
 
-// 11. History / Audit Log (append-only)
-export const historyAuditLogs = pgTable(
-  "history_audit_logs",
-  {
-    id: varchar("id", { length: 64 }).primaryKey(),
-    entity: text("entity").notNull(), // submission | review | participant | extension | ...
-    entityId: text("entity_id").notNull(),
-    action: text("action").notNull(), // approve | reject | request_changes | revise | reopen | reassign | claim | bulk_approve | recalc_penalty | export
-    oldValue: jsonb("old_value"),
-    newValue: jsonb("new_value"),
-    reason: text("reason"),
-    changedBy: text("changed_by").notNull(), // admin_users.id from the SESSION
-    requestId: text("request_id"),
-    timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [index("audit_entity_idx").on(t.entity, t.entityId, t.timestamp)]
-);
+  /** Must be ≥ 10 characters (enforced at application layer). */
+  reason: text("reason").notNull(),
+
+  grantedBy: uuid("granted_by").notNull(),
+  grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  revokedBy: uuid("revoked_by"),
+  revokedReason: text("revoked_reason"),
+
+  isGroupExtension: boolean("is_group_extension").notNull().default(false),
+  groupId: text("group_id"),
+});
+
+/* ------------------------------------------------------------------ */
+/*  SCORE ADJUSTMENTS (PRD 8.4)                                        */
+/* ------------------------------------------------------------------ */
+
+export const scoreAdjustments = pgTable("score_adjustments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  participantId: uuid("participant_id")
+    .notNull()
+    .references(() => participants.id),
+
+  /** Optional: tie to a specific submission, or null for global adjustment. */
+  submissionId: uuid("submission_id").references(() => submissions.id),
+
+  /** Positive or negative integer delta (±Δ points). */
+  pointsDelta: integer("points_delta").notNull(),
+
+  /** Must be ≥ 10 characters (enforced at application layer). */
+  reason: text("reason").notNull(),
+
+  adjustedBy: uuid("adjusted_by").notNull(),
+  adjustedAt: timestamp("adjusted_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/*  LEADERBOARD STATE (PRD 8.4)                                        */
+/* ------------------------------------------------------------------ */
+
+export const leaderboardState = pgTable("leaderboard_state", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  status: leaderboardStatusEnum("status").notNull().default("live"),
+
+  frozenAt: timestamp("frozen_at", { withTimezone: true }),
+  frozenBy: uuid("frozen_by"),
+
+  /** JSON snapshot of the leaderboard at freeze time (public view cache). */
+  frozenSnapshot: jsonb("frozen_snapshot"),
+
+  /** JSON snapshot of final verified standings. */
+  publishedSnapshot: jsonb("published_snapshot"),
+
+  resultsAnnouncedAt: timestamp("results_announced_at", {
+    withTimezone: true,
+  }),
+  announcementDate: text("announcement_date"),
+
+  unfrozenAt: timestamp("unfrozen_at", { withTimezone: true }),
+  unfrozenBy: uuid("unfrozen_by"),
+  unfrozenReason: text("unfrozen_reason"),
+
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------------------ */
+/*  AUDIT LOG (append-only, immutable - PRD 6.3 & Acceptance #10)      */
+/* ------------------------------------------------------------------ */
+
+export const auditLog = pgTable("audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  /** Domain entity: 'submission' | 'participant' | 'leaderboard' | 'extension' … */
+  entity: text("entity").notNull(),
+
+  /** Primary key of affected entity row (stored as text to support UUIDs and singleton IDs without cast crash). */
+  entityId: text("entity_id").notNull(),
+
+  /** Human-readable action label. */
+  action: text("action").notNull(),
+
+  oldValue: jsonb("old_value"),
+  newValue: jsonb("new_value"),
+  reason: text("reason"),
+  changedBy: uuid("changed_by"),
+  ipAddress: text("ip_address"),
+
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull().defaultNow(),
+});

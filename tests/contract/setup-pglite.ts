@@ -3,7 +3,7 @@ import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import path from "node:path";
-import * as schema from "../../lib/db/schema";
+import * as schema from "../../lib/db/admin-schema";
 import { DrizzleRepository } from "../../lib/repositories/drizzle/drizzle-repository";
 
 export async function createTestDrizzleRepository(): Promise<{ repo: DrizzleRepository; pglite: PGlite }> {

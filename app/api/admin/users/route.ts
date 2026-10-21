@@ -1,5 +1,5 @@
 import { getPostgresDb } from "@/lib/db/client";
-import * as schema from "@/lib/db/schema";
+import * as schema from "@/lib/db/admin-schema";
 import { adminUsers, ApiError, requireCapability } from "@/lib/admin/auth";
 import { assertSameOrigin, ensureDynamicConnection, jsonError, readBody } from "@/lib/admin/http";
 import { checkRateLimit, getClientIp } from "@/lib/admin/rate-limit";

@@ -3,7 +3,7 @@ import { calculateFinalScore, calculateSubmissionPenalty, describePenalty } from
 import { validateAndExtractDriveKey } from "@/lib/admin/validation";
 import { ApiError } from "@/lib/admin/auth";
 import type { AdminUser, PolicySnapshot, QueueRow, ReviewStatus } from "@/lib/admin/types";
-import * as schema from "@/lib/db/schema";
+import * as schema from "@/lib/db/admin-schema";
 import { getPrdSeedData } from "@/lib/repositories/seed/prd-seed";
 import type {
   BulkApproveItemResult,
