@@ -8,9 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
+    "test": "node scripts/run-tests.mjs",
     "test:engine": "npx tsx lib/leaderboard/__tests__/engine.test.ts",
-    "test:perf": "node --import tsx --test \"tests/performance/**/*.test.ts\"",
+    "test:perf": "node scripts/run-tests.mjs tests/performance",
     "test:e2e": "playwright test",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
