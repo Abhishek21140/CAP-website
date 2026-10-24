@@ -78,8 +78,9 @@ button:focus-visible,a:focus-visible{outline-color:#cfad66}
 .faq-tab:hover,.faq-tab.active{color:#c8b36e;background:#c5a9590b}
 .faq-tab.active>span,.faq-tab.active .arrow{color:#c8b36e}
 .faq-question:hover{color:#f5efdf}
-.faq-plus{border-color:#78634a;color:#bd604a}
-.faq-open .faq-plus{border-color:#bd604a88;background:#bd604a0d}
+.faq-plus{border-color:#c9a947;color:#ffe17b;box-shadow:0 0 5px #edc24755;text-shadow:0 0 5px #ffd54f88;transition:color .2s,border-color .2s,box-shadow .2s,text-shadow .2s}
+.faq-open .faq-plus{border-color:#f2cb58;background:#f2cb581c;color:#ffe58a;box-shadow:0 0 8px #f4c54288,inset 0 0 10px #f4c54230;text-shadow:0 0 8px #ffd54f}
+.faq-open .faq-answer p{color:#f2dfaa;text-shadow:0 0 7px #ffc83d66,0 0 16px #f5b52e3d}
 .join-section{background:radial-gradient(ellipse at 82% 51%,#37321b 0%,#1b2115 30%,#0b100b 69%)}
 .join-section:before{background-image:linear-gradient(#cfb46a08 1px,transparent 1px),linear-gradient(90deg,#cfb46a08 1px,transparent 1px)}
 .join-panel{border-color:#b9a35c66;background:#15190f}
@@ -95,7 +96,7 @@ button:focus-visible,a:focus-visible{outline-color:#cfad66}
 .worldtree-mask{position:absolute!important;z-index:2;left:-7vw;bottom:-27vh;width:min(68vw,950px)!important;height:150vh!important;object-fit:contain;object-position:left bottom;clip-path:inset(0 0 45% 0);opacity:.78;filter:saturate(.72) brightness(.82);mix-blend-mode:screen}
 .site-content{position:relative;z-index:1}
 .site-header{background:#090b08eb}
-.journey-section,.missions-section,.faq-section{background:#10130e78}
+.journey-section,.missions-section{background:transparent}.faq-section{background:rgba(5,8,6,.28)}
 .site-footer{background:#080a07c9}
 .hero{background:linear-gradient(90deg,#090b08e8 0%,#090b0899 40%,#090b084d 76%,#090b0870 100%)}
 .hero:after{background:linear-gradient(90deg,#090b08cc 0%,#090b0870 40%,transparent 84%),linear-gradient(0deg,#090b08b8 0%,transparent 25%)}
@@ -137,7 +138,8 @@ button:focus-visible,a:focus-visible{outline-color:#cfad66}
 .signal-strip{height:48px;background:linear-gradient(90deg,#8c653b,#c6a457 22%,#77844b 50%,#b38a4e 78%,#7d4b39);border-block:1px solid #ecd797;box-shadow:0 4px 20px #0008}
 .signal-track{letter-spacing:.2em;text-shadow:0 1px #ffe4a3;font-size:10px}
 .section-kicker{border-bottom:1px solid #c9a75d52;color:#ddc47f;letter-spacing:.17em}
-.section-kicker span:first-child:before{content:"✳";margin-right:11px;color:#c46143}
+.section-kicker span:first-child{display:inline-flex;align-items:center;min-height:36px;padding:8px 14px;border:1px solid #d5b35b9c;border-radius:999px;background:repeating-linear-gradient(125deg,transparent 0 7px,#f5df9a14 8px 9px,transparent 10px 15px),linear-gradient(135deg,#4c3a19e8,#211b10f2 58%,#60481fe0);box-shadow:inset 0 1px #f7e2a544,0 3px 10px #0004;color:#f2d68c;font-size:13px;line-height:1.2;white-space:nowrap}
+.section-kicker span:first-child:before{content:"✳";margin-right:11px;color:#e2c16c;font-size:11px}
 .overline{color:#c8a753;letter-spacing:.2em}
 .section h2,.journey-title h2,.benefits-head h2,.missions-head h2,.leaderboard-head h2,.faq-heading h2,.join-content h2{letter-spacing:-.065em;text-shadow:2px 3px 0 #050705}
 .section h2 em,.journey-title h2 em,.benefits-head h2 em,.missions-head h2 em,.leaderboard-head h2 em,.faq-heading h2 em,.join-content h2 em{color:#d4ad61;text-shadow:0 0 24px #c59b5220}
@@ -213,11 +215,11 @@ a,button{transition-duration:.2s}
 @keyframes letter-assemble{0%{opacity:0;filter:blur(3px) brightness(1.8) drop-shadow(0 0 7px #ef7437);transform:translate3d(var(--scatter-x),var(--scatter-y),0) rotate(var(--scatter-r)) scale(.82)}78%{opacity:1;filter:blur(0) brightness(1.12) drop-shadow(0 0 5px #f0843c);transform:translate3d(0,0,0) rotate(0) scale(1)}100%{opacity:1;filter:blur(0) brightness(1) drop-shadow(0 0 0 transparent);transform:translate3d(0,0,0) rotate(0) scale(1)}}
 @keyframes letter-jets{0%,32%{opacity:.82;transform:scaleY(1)}75%,100%{opacity:0;transform:scaleY(.22)}}
 @media(prefers-reduced-motion:reduce){.hero-letter:before,.hero-letter:after{animation:none!important;opacity:0!important}}
-.worldtree-image{opacity:1;filter:brightness(1.1) saturate(1.2) contrast(1.08)}
-.worldtree-mask{opacity:.96;filter:saturate(1.02) brightness(1.02);mix-blend-mode:screen}
+.worldtree-image{opacity:.7;filter:brightness(.86) saturate(.92) contrast(1.04)}
+.worldtree-mask{opacity:.66;filter:saturate(.9) brightness(.88);mix-blend-mode:screen}
 .worldtree-shade{background:linear-gradient(90deg,#0308067d 0%,#03080630 45%,#03080634 100%),linear-gradient(0deg,#090b0882 0%,#090b0836 36%,#090b081c 78%,#090b084a 100%)}
 .hero:after{background:linear-gradient(90deg,#090b08db 0%,#090b089e 36%,#090b0857 57%,#090b081b 82%,transparent 100%),linear-gradient(0deg,#090b08aa 0%,transparent 34%)}
-@media(max-width:640px){.worldtree-image{opacity:.94;filter:brightness(1.12) saturate(1.18) contrast(1.06)}.worldtree-mask{opacity:.72}.worldtree-shade{background:linear-gradient(90deg,#03080680 0%,#03080634 54%,#03080636 100%),linear-gradient(0deg,#090b08a1 0%,#090b0848 45%,#090b0835 78%,#090b0860 100%)}.hero:after{background:linear-gradient(90deg,#090b08d4 0%,#090b0892 45%,#090b0848 72%,#090b0822 100%),linear-gradient(0deg,#090b08cc 0%,#090b0860 36%,transparent 78%)}}
+@media(max-width:640px){.worldtree-image{opacity:.64;filter:brightness(.84) saturate(.9) contrast(1.02)}.worldtree-mask{opacity:.5}.worldtree-shade{background:linear-gradient(90deg,#03080680 0%,#03080634 54%,#03080636 100%),linear-gradient(0deg,#090b08a1 0%,#090b0848 45%,#090b0835 78%,#090b0860 100%)}.hero:after{background:linear-gradient(90deg,#090b08d4 0%,#090b0892 45%,#090b0848 72%,#090b0822 100%),linear-gradient(0deg,#090b08cc 0%,#090b0860 36%,transparent 78%)}}
 
 /* Navigation readability: keep the existing layout, but make the labels easier to scan. */
 .main-nav{gap:clamp(18px,2.1vw,32px)}
@@ -303,9 +305,13 @@ body{font-size:16px}
 .application-details h3{margin:0 0 10px;font-size:23px;color:#f1ead9}
 .application-details p{margin:0 0 18px;max-width:440px;color:#d0c8b7;font-size:16px;line-height:1.7}
 .text-link{font-size:12px;letter-spacing:.06em}
+.program-intro .text-link{min-height:42px;padding:0 15px;border:1px solid #d4c37e;border-radius:9px;background:linear-gradient(135deg,var(--green),#7e9250);box-shadow:0 3px 10px #0005,inset 0 1px #ffffff42;color:#10140b;transition:background .2s,border-color .2s,box-shadow .2s,transform .2s}
+.program-intro .text-link:hover{background:linear-gradient(135deg,#c4d58a,var(--green));border-color:#e4d694;color:#10140b;box-shadow:0 5px 14px #0006,inset 0 1px #ffffff55;transform:translateY(-1px)}
 @media(max-width:640px){
   body{font-size:16px}
   .section-kicker{height:auto;min-height:48px;font-size:10px}
+  .section-kicker span:first-child{min-height:32px;padding:7px 9px;font-size:9px}
+  .section-kicker span:first-child:before{margin-right:7px;font-size:9px}
   .overline{font-size:11px}
   .hero-description{font-size:16px;max-width:36ch}
   .hero-tagline{font-size:13px}
@@ -409,7 +415,7 @@ body{font-size:16px}
 
 /* Give the benefit section its own contrast veil over the brighter canopy. */
 .benefits-section{position:relative;isolation:isolate}
-.benefits-section:before{content:"";position:absolute;z-index:-1;top:0;bottom:0;left:50%;width:100vw;transform:translateX(-50%);background:linear-gradient(180deg,#0508069c 0%,#050806c9 18%,#050806dc 52%,#050806c9 84%,#0508069c 100%);pointer-events:none}
+.benefits-section:before{display:none}
 
 /* Keep the four crystals visually independent from the timeline treatment. */
 .journey-stones::before,.journey-stones::after{content:none!important;display:none!important}
@@ -439,3 +445,22 @@ body{font-size:16px}
 @keyframes launch-content-reveal{from{clip-path:circle(0 at var(--launch-origin-x,50%) var(--launch-origin-y,50%))}to{clip-path:circle(160vmax at var(--launch-origin-x,50%) var(--launch-origin-y,50%))}}
 @media(max-width:640px){.launch-title{font-size:clamp(53px,15vw,94px)}.launch-title.is-moving{font-size:clamp(43px,10.5vw,68px)}}
 @media(prefers-reduced-motion:reduce){.entry-screen.is-cinematic,.entry-screen.is-cinematic:before,.entry-screen.is-cinematic>:not(.launch-title),.launch-title.is-moving,.launch-title .hero-letter,.assemble-background{transition:none!important;animation:none!important}.launch-title .hero-letter{opacity:1;filter:none;transform:none}}
+
+/* Silver task buttons that reveal their details with a horizontal flip. */
+.mission-list{display:grid;grid-template-columns:minmax(0,1fr);gap:27px;max-width:none;margin:16px 0 0}
+.mission-list li{display:flex;justify-content:center;min-width:0;padding:0;border:0}
+.mission-flip{position:relative;display:block;width:100%;max-width:860px;height:104px;padding:7px;border:0;border-radius:999px;background:transparent;color:inherit;text-align:left;cursor:pointer;perspective:1100px}
+.mission-flip:before{content:"";position:absolute;z-index:4;inset:0;border:1px solid #c9aa56;border-radius:999px;box-shadow:0 0 0 1px #c9aa5633,0 0 12px #c9aa5638;pointer-events:none}
+.mission-flip-inner{position:relative;display:block;width:100%;height:100%;transform-style:preserve-3d;transition:transform .78s cubic-bezier(.2,.72,.2,1)}
+.mission-flip:hover .mission-flip-inner,.mission-flip:focus .mission-flip-inner,.mission-flip:active .mission-flip-inner{transform:rotateX(180deg)}
+.mission-flip:focus-visible{outline:2px solid #f0d67e;outline-offset:3px}
+.mission-flip-face{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px 48px;overflow:hidden;border:1px solid #aab5b6;border-radius:999px;background:repeating-linear-gradient(112deg,transparent 0 7px,#ffffff18 8px 9px,#10161922 10px 11px,transparent 12px 18px),linear-gradient(105deg,#202a2f 0%,#7f898d 11%,#3c474c 24%,#626e72 41%,#263136 55%,#596469 73%,#283337 90%,#aab3b4 100%);box-shadow:inset 0 2px 4px #fff9,inset 0 -12px 22px #11191d66,0 10px 24px #0007;color:#263036;text-align:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;transition:box-shadow .45s ease}
+.mission-flip-front{transform:rotateX(0);color:#e5ebea}
+.mission-flip-back{transform:rotateX(180deg);background:repeating-linear-gradient(112deg,transparent 0 7px,#ffffff12 8px 9px,#10161920 10px 11px,transparent 12px 18px),linear-gradient(105deg,#141e1a 0%,#283631 18%,#17221e 36%,#303b35 50%,#17221e 68%,#29342e 84%,#121c18 100%);color:#f4f3e9}
+.mission-flip:hover .mission-flip-back,.mission-flip:focus .mission-flip-back,.mission-flip:active .mission-flip-back{box-shadow:inset 0 0 24px #b9f26726,0 0 14px #b9f26766,0 0 34px #82b83b70,0 0 58px #42612b52}
+.mission-flip-face:before{content:"";position:absolute;z-index:0;inset:8px;border-radius:inherit;background:repeating-conic-gradient(from 8deg at 50% 50%,#202a2e48 0deg 4deg,#f4f6f42c 4deg 7deg,transparent 7deg 12deg),repeating-radial-gradient(circle at 50% 50%,transparent 0 7px,#202a2e3d 8px 9px,#f6f8f53d 10px 11px,transparent 12px 17px);-webkit-mask-image:radial-gradient(ellipse at center,#000 0 24%,transparent 62%);mask-image:radial-gradient(ellipse at center,#000 0 24%,transparent 62%);opacity:.68;pointer-events:none}
+.mission-flip-title,.mission-flip-description{position:relative;z-index:1}
+.mission-flip-title{font-size:clamp(20px,2.2vw,27px);font-weight:800;line-height:1.15;letter-spacing:-.035em;text-shadow:0 1px 3px #000,0 0 8px #fff,0 0 16px #d8bd6c99}
+.mission-flip-description{max-width:58ch;font-size:15px;font-weight:650;line-height:1.45;color:#f7f3e7;text-shadow:0 1px 3px #000,0 0 9px #fff,0 0 15px #c9aa5688}
+@media(max-width:640px){.mission-list{grid-template-columns:1fr;gap:25px;margin-top:10px}.mission-list li{padding:0}.mission-flip{height:96px}.mission-flip-face{padding:18px 28px}.mission-flip-title{font-size:20px}.mission-flip-description{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.mission-flip-inner{transition:none}}
