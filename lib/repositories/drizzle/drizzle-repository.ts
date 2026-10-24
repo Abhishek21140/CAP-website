@@ -53,8 +53,7 @@ export class DrizzleRepository implements SubmissionsRepository {
     });
   }
 
-  public async seed(): Promise<void> {
-    const seedData = getPrdSeedData();
+  public async seed(seedData: ReturnType<typeof getPrdSeedData> = getPrdSeedData()): Promise<void> {
 
     // Check if tasks already exist
     const existingTasks = await this.db.select().from(schema.tasks);

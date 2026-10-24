@@ -140,6 +140,7 @@ export default function Home() {
   const launchTitleRef = useRef<HTMLHeadingElement>(null);
   const dustCanvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const lastRevealSoundAtRef = useRef(0);
 
   const enterExperience = () => {
     if (entryPhase !== "intro") return;
@@ -314,40 +315,25 @@ export default function Home() {
     let height = window.innerHeight;
     let frame = 0;
 
-    const playSandGather = (delay: number) => {
+    const playRevealSound = () => {
       const audio = audioContextRef.current;
-      if (!audio || audio.state !== "running") return;
+      const now = performance.now();
+      if (!audio || audio.state !== "running" || now - lastRevealSoundAtRef.current < 180) return;
+      lastRevealSoundAtRef.current = now;
 
-      const duration = 1.3;
-      const buffer = audio.createBuffer(1, Math.ceil(audio.sampleRate * duration), audio.sampleRate);
-      const samples = buffer.getChannelData(0);
-      let brownNoise = 0;
-      for (let index = 0; index < samples.length; index += 1) {
-        brownNoise = (brownNoise + (Math.random() * 2 - 1) * 0.025) / 1.02;
-        samples[index] = brownNoise * 7;
-      }
-
-      const startAt = audio.currentTime + delay / 1000;
-      const source = audio.createBufferSource();
-      const highPass = audio.createBiquadFilter();
-      const lowPass = audio.createBiquadFilter();
-      const volume = audio.createGain();
-      source.buffer = buffer;
-      highPass.type = "highpass";
-      highPass.frequency.setValueAtTime(180, startAt);
-      lowPass.type = "lowpass";
-      lowPass.frequency.setValueAtTime(6200, startAt);
-      lowPass.frequency.exponentialRampToValueAtTime(900, startAt + duration);
-      volume.gain.setValueAtTime(0.0001, startAt);
-      volume.gain.exponentialRampToValueAtTime(0.012, startAt + 0.16);
-      volume.gain.exponentialRampToValueAtTime(0.005, startAt + 0.72);
-      volume.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-      source.connect(highPass);
-      highPass.connect(lowPass);
-      lowPass.connect(volume);
-      volume.connect(audio.destination);
-      source.start(startAt);
-      source.stop(startAt + duration);
+      const startAt = audio.currentTime;
+      const oscillator = audio.createOscillator();
+      const gain = audio.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(620, startAt);
+      oscillator.frequency.exponentialRampToValueAtTime(470, startAt + 0.075);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.exponentialRampToValueAtTime(0.008, startAt + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.085);
+      oscillator.connect(gain);
+      gain.connect(audio.destination);
+      oscillator.start(startAt);
+      oscillator.stop(startAt + 0.09);
     };
 
     const resizeCanvas = () => {
@@ -410,7 +396,7 @@ export default function Home() {
         const now = performance.now();
         const delay = Number(card.dataset.dustDelay || 0);
         card.classList.add("dust-visible");
-        playSandGather(delay);
+        playRevealSound();
 
         const finishTimer = window.setTimeout(() => {
           card.classList.add("dust-finished");
@@ -634,13 +620,18 @@ export default function Home() {
 
       <section className="section benefits-section" id="benefits"><div className="section-kicker"><span>03 / WHAT YOU CAN GAIN</span><span>SKILLS THROUGH PRACTICE</span></div><div className="benefits-title"><p className="overline">A CAMPUS ROLE. PRACTICAL EXPERIENCE.</p><h2>What&apos;s <em>in it</em><br />for you?</h2></div><p className="benefits-intro">Take part in entrepreneurship on your campus and get access to experiences, resources and recognition through CAP.</p><ul className="benefit-icons-grid">{benefits.map((benefit, index) => <li key={benefit.title}><span className="benefit-icon-number">0{index + 1}</span><span className="benefit-icon-halo"><BenefitIcon name={benefit.icon} /></span><h3>{benefit.title}</h3><p>{benefit.copy}</p></li>)}</ul></section>
 
-      <section className="missions-section" id="missions"><div className="section missions-inner"><div className="section-kicker"><span>04 / PROGRAM TASKS</span><span>WHAT PARTICIPANTS DO</span></div><div className="missions-head"><div><p className="overline">TYPICAL TASK AREAS</p><h2>Ways to <em>take part.</em></h2></div></div><ul className="mission-list"><li><span>01</span><div><h3>Campus outreach</h3><p>Help students hear about entrepreneurship activities, competitions and events.</p></div></li><li><span>02</span><div><h3>Content and promotion</h3><p>Share useful information and create content that encourages student participation.</p></div></li><li><span>03</span><div><h3>Event support</h3><p>Help coordinate or promote campus activities, with support from the program team.</p></div></li><li><span>04</span><div><h3>Quizzes and submissions</h3><p>Complete in-site quizzes and submit task evidence through a public Drive link.</p></div></li></ul><p className="program-note">The exact task schedule, deadlines and scoring rules will be shared before tasks begin.</p></div></section>
+      <section className="missions-section" id="missions"><div className="section missions-inner"><div className="section-kicker"><span>04 / PROGRAM TASKS</span><span>WHAT PARTICIPANTS DO</span></div><div className="missions-head"><div><p className="overline">TYPICAL TASK AREAS</p><h2>Ways to <em>take part.</em></h2></div></div><ul className="mission-list">
+        <li><button className="mission-flip" type="button" aria-label="Campus outreach. Help students hear about entrepreneurship activities, competitions and events."><span className="mission-flip-inner" aria-hidden="true"><span className="mission-flip-face mission-flip-front"><span className="mission-flip-title">Campus outreach</span></span><span className="mission-flip-face mission-flip-back"><span className="mission-flip-description">Help students hear about entrepreneurship activities, competitions and events.</span></span></span></button></li>
+        <li><button className="mission-flip" type="button" aria-label="Content and promotion. Share useful information and create content that encourages student participation."><span className="mission-flip-inner" aria-hidden="true"><span className="mission-flip-face mission-flip-front"><span className="mission-flip-title">Content and promotion</span></span><span className="mission-flip-face mission-flip-back"><span className="mission-flip-description">Share useful information and create content that encourages student participation.</span></span></span></button></li>
+        <li><button className="mission-flip" type="button" aria-label="Event support. Help coordinate or promote campus activities, with support from the program team."><span className="mission-flip-inner" aria-hidden="true"><span className="mission-flip-face mission-flip-front"><span className="mission-flip-title">Event support</span></span><span className="mission-flip-face mission-flip-back"><span className="mission-flip-description">Help coordinate or promote campus activities, with support from the program team.</span></span></span></button></li>
+        <li><button className="mission-flip" type="button" aria-label="Quizzes and submissions. Complete in-site quizzes and submit task evidence through a public Drive link."><span className="mission-flip-inner" aria-hidden="true"><span className="mission-flip-face mission-flip-front"><span className="mission-flip-title">Quizzes and submissions</span></span><span className="mission-flip-face mission-flip-back"><span className="mission-flip-description">Complete in-site quizzes and submit task evidence through a public Drive link.</span></span></span></button></li>
+      </ul><p className="program-note">The exact task schedule, deadlines and scoring rules will be shared before tasks begin.</p></div></section>
 
       <section className="section leaderboard-section" id="leaderboard"><div className="section-kicker"><span>05 / PROGRESS AND RANKINGS</span><span>HOW POINTS WORK</span></div><div className="leaderboard-head"><div><p className="overline">TRACK YOUR PARTICIPATION</p><h2>See your<br /><em>progress.</em></h2></div><p>Reviewers score task submissions up to the points available for each task. Your final points determine your place on the leaderboard. The first rankings will appear when missions begin.</p></div><p className="leaderboard-note">Participants can see their own submission status and feedback. Public rankings display only the information shared with participants.</p></section>
 
       <section className="faq-section" id="faq" ref={faqRef}><div className="section"><div className="section-kicker"><span>06 / FIELD INTEL</span><span>18 QUESTIONS / 05 CHANNELS</span></div><div className="faq-heading"><div><p className="overline">BEFORE YOU SUIT UP</p><h2>GOOD QUESTIONS.<br /><em>STRAIGHT ANSWERS.</em></h2></div><p>Clarity is a superpower. Find the signal before you join the mission.</p></div><div className="faq-layout"><div className="faq-tabs" role="tablist" aria-label="FAQ categories">{faqGroups.map((group, index) => <button className={activeGroup === group.id ? "faq-tab active" : "faq-tab"} role="tab" aria-selected={activeGroup === group.id} aria-controls="faq-panel" id={`tab-${group.id}`} onClick={() => {setActiveGroup(group.id); setOpenQuestions([`${group.id}-0`]);}} key={group.id}><span>0{index + 1}</span>{group.label}<Arrow /></button>)}</div><div className="faq-panel" id="faq-panel" role="tabpanel" aria-labelledby={`tab-${currentGroup.id}`}>{currentGroup.questions.map(([question, answer], index) => {const key = `${currentGroup.id}-${index}`; const isOpen = openQuestions.includes(key); return <article className={isOpen ? "faq-item faq-open" : "faq-item"} id={`faq-${currentGroup.id}-${index + 1}`} key={key}><button className="faq-question" id={`question-${key}`} aria-expanded={isOpen} aria-controls={`answer-${key}`} onClick={() => toggleQuestion(key)} onKeyDown={(event) => moveFaqFocus(event, index, currentGroup.questions.length)}><span className="faq-q-index">Q{String(faqGroups.flatMap((item) => item.questions).findIndex((item) => item[0] === question) + 1).padStart(2, "0")}</span><span>{question}</span><span className="faq-plus" aria-hidden="true">{isOpen ? "−" : "+"}</span></button><div className="faq-answer" id={`answer-${key}`} role="region" aria-labelledby={`question-${key}`} hidden={!isOpen}><p>{answer}</p></div></article>;})}</div></div></div></section>
 
-      <section className="join-section" id="join"><div className="section join-inner"><div className="section-kicker"><span>06 / APPLICATIONS</span><span>DETAILS TO BE ANNOUNCED</span></div><div className="join-content"><div><p className="overline">INTERESTED IN JOINING?</p><h2>Applications<br /><em>coming soon.</em></h2><p className="join-copy">Eligibility, dates and application instructions will be published here once confirmed.</p><a className="button button-primary" href="#about">REVIEW THE PROGRAM <Arrow /></a></div><div className="application-details"><h3>Before applications open</h3><p>We’ll share eligibility, time commitment, program dates, selection steps and any confirmed benefits here.</p><a className="text-link" href="#faq">READ COMMON QUESTIONS <Arrow /></a></div></div></div></section>
+      <section className="join-section" id="join"><div className="section join-inner"><div className="section-kicker"><span>07 / APPLICATIONS</span><span>DETAILS TO BE ANNOUNCED</span></div><div className="join-content"><div><p className="overline">INTERESTED IN JOINING?</p><h2>Applications<br /><em>coming soon.</em></h2><p className="join-copy">Eligibility, dates and application instructions will be published here once confirmed.</p><a className="button button-primary" href="#about">REVIEW THE PROGRAM <Arrow /></a></div><div className="application-details"><h3>Before applications open</h3><p>We’ll share eligibility, time commitment, program dates, selection steps and any confirmed benefits here.</p><a className="text-link" href="#faq">READ COMMON QUESTIONS <Arrow /></a></div></div></div></section>
 
       <footer className="site-footer"><div className="footer-top"><a className="brand" href="#top"><HexMark /><span className="brand-name">CAMPUS<span>·</span> ASSEMBLY<span className="brand-sub">INITIATIVE  /  2026</span></span></a><p>Built by fans. Powered by campus spirit.<br />An independent fan-made initiative.</p><a className="back-top" href="#top">BACK TO TOP ↑</a></div><div className="footer-bottom"><span>© CAP / CAMPUS OPERATIONS</span><span>UNOFFICIAL FAN-MADE PROJECT. NOT AFFILIATED WITH MARVEL STUDIOS OR THE WALT DISNEY COMPANY.</span><span>EARTH-616 <i>✳</i></span></div></footer>
       </div>
