@@ -6,6 +6,35 @@ import type { SubmissionsRepository } from "../../lib/repositories/types";
 import type { AdminUser } from "../../lib/admin/types";
 import { ApiError } from "../../lib/admin/auth";
 import { PGlite } from "@electric-sql/pglite";
+import { getPrdSeedData } from "../../lib/repositories/seed/prd-seed";
+
+function createLifecycleSeed() {
+  const seed = getPrdSeedData();
+  const poster = seed.tasks.find((task) => task.id === "task-poster");
+  assert.ok(poster, "Poster task must exist in lifecycle seed");
+
+  // Keep the original demo timeline relationships while anchoring the cutoff
+  // inside the current test window, so these lifecycle cases stay date agnostic.
+  const originalDeadline = new Date(poster.deadline).getTime();
+  const currentDeadline = Date.now() - 86_400_000;
+  const shift = currentDeadline - originalDeadline;
+  const shiftIso = (value: string) => new Date(new Date(value).getTime() + shift).toISOString();
+
+  poster.deadline = new Date(currentDeadline).toISOString();
+  for (const assignment of seed.taskAssignments) {
+    if (assignment.taskId === poster.id) assignment.effectiveDeadlineAt = poster.deadline;
+  }
+  for (const submission of seed.submissions) {
+    if (submission.taskId !== poster.id) continue;
+    submission.submittedAt = shiftIso(submission.submittedAt);
+    submission.firstSubmittedAt = shiftIso(submission.firstSubmittedAt);
+    if (submission.correctionDeadline) submission.correctionDeadline = shiftIso(submission.correctionDeadline);
+    if (submission.policySnapshot) submission.policySnapshot.deadline = poster.deadline;
+    for (const historyItem of submission.history) historyItem.at = shiftIso(historyItem.at);
+  }
+
+  return seed;
+}
 
 const superAdmin: AdminUser = {
   id: "admin-s",
@@ -352,13 +381,12 @@ function runLifecycleContractTests(
 }
 
 runLifecycleContractTests("MemoryRepository", async () => {
-  const repo = new MemoryRepository();
-  repo.seedSync();
+  const repo = new MemoryRepository(createLifecycleSeed());
   return { repo };
 });
 
 runLifecycleContractTests("DrizzleRepository (PGlite)", async () => {
-  const { repo, pglite } = await createTestDrizzleRepository();
+  const { repo, pglite } = await createTestDrizzleRepository(createLifecycleSeed());
   return {
     repo,
     pglite,

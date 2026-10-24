@@ -61,12 +61,11 @@ export class MemoryRepository implements SubmissionsRepository {
   private mutex: Promise<void> = Promise.resolve();
   private lockStorage = new AsyncLocalStorage<boolean>();
 
-  constructor() {
-    this.seedSync();
+  constructor(seedData: ReturnType<typeof getPrdSeedData> = getPrdSeedData()) {
+    this.seedSync(seedData);
   }
 
-  public seedSync(): void {
-    const seed = getPrdSeedData();
+  public seedSync(seed: ReturnType<typeof getPrdSeedData> = getPrdSeedData()): void {
     this.tasks = seed.tasks;
     this.adminUsers = seed.adminUsers;
     this.colleges = seed.colleges;
@@ -86,8 +85,8 @@ export class MemoryRepository implements SubmissionsRepository {
     };
   }
 
-  public async seed(): Promise<void> {
-    this.seedSync();
+  public async seed(seedData: ReturnType<typeof getPrdSeedData> = getPrdSeedData()): Promise<void> {
+    this.seedSync(seedData);
   }
 
   private async lock<T>(fn: () => T | Promise<T>): Promise<T> {

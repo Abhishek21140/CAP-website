@@ -5,8 +5,11 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import path from "node:path";
 import * as schema from "../../lib/db/admin-schema";
 import { DrizzleRepository } from "../../lib/repositories/drizzle/drizzle-repository";
+import { getPrdSeedData } from "../../lib/repositories/seed/prd-seed";
 
-export async function createTestDrizzleRepository(): Promise<{ repo: DrizzleRepository; pglite: PGlite }> {
+export async function createTestDrizzleRepository(
+  seedData = getPrdSeedData()
+): Promise<{ repo: DrizzleRepository; pglite: PGlite }> {
   const pglite = new PGlite({ extensions: { pg_trgm } });
   await pglite.exec("CREATE SCHEMA IF NOT EXISTS cap; SET search_path TO cap, public;");
   const db = drizzle(pglite, { schema });
@@ -16,7 +19,7 @@ export async function createTestDrizzleRepository(): Promise<{ repo: DrizzleRepo
   await migrate(db, { migrationsFolder: drizzleDir });
 
   const repo = new DrizzleRepository(db);
-  await repo.seed();
+  await repo.seed(seedData);
 
   return { repo, pglite };
 }
