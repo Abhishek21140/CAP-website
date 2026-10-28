@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { animate, motion, useMotionValue, useReducedMotion, useTransform, type MotionValue } from "motion/react";
 
 const faqGroups = [
   { id: "about", label: "ABOUT CAP", questions: [
@@ -63,6 +64,77 @@ function BenefitIcon({ name }: { name: string }) {
   </svg>;
 }
 
+function BenefitOrbitCard({ benefit, index, rotation, width, height, reducedMotion, ready }: {
+  benefit: (typeof benefits)[number];
+  index: number;
+  rotation: MotionValue<number>;
+  width: number;
+  height: number;
+  reducedMotion: boolean;
+  ready: boolean;
+}) {
+  const phase = useTransform(() => (reducedMotion ? 0 : rotation.get()) + index * Math.PI * 2 / benefits.length);
+  const compact = width <= 900;
+  const x = useTransform(() => compact ? 0 : Math.cos(phase.get()) * Math.min(width * 0.36, 440));
+  const y = useTransform(() => compact ? 0 : Math.sin(phase.get()) * Math.min(height * 0.31, 190));
+  const depth = useTransform(() => (Math.sin(phase.get()) + 1) / 2);
+  const scale = useTransform(() => compact ? 1 : 0.8 + depth.get() * 0.2);
+  const opacity = useTransform(() => compact ? 1 : 0.72 + depth.get() * 0.28);
+  const zIndex = useTransform(() => compact ? index : 10 + Math.round(depth.get() * 90));
+
+  return <motion.li className="benefit-orbit-card" style={ready ? { x, y, scale, opacity, zIndex } : undefined}>
+    <span className="benefit-orbit-number">{String(index + 1).padStart(2, "0")}</span>
+    <span className="benefit-icon-halo"><BenefitIcon name={benefit.icon} /></span>
+    <h3>{benefit.title}</h3>
+    <p>{benefit.copy}</p>
+  </motion.li>;
+}
+
+function BenefitOrbit() {
+  const listRef = useRef<HTMLUListElement>(null);
+  const controlsRef = useRef<ReturnType<typeof animate> | null>(null);
+  const rotation = useMotionValue(0);
+  const reducedMotionPreference = useReducedMotion();
+  const reducedMotion = reducedMotionPreference === true;
+  const [paused, setPaused] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [bounds, setBounds] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    const controls = animate(rotation, Math.PI * 2, { duration: 54, ease: "linear", repeat: Infinity });
+    controlsRef.current = controls;
+    return () => {
+      controls.stop();
+      controlsRef.current = null;
+    };
+  }, [reducedMotion, rotation]);
+
+  useEffect(() => {
+    if (paused) controlsRef.current?.pause();
+    else controlsRef.current?.play();
+  }, [paused, reducedMotion]);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const observer = new ResizeObserver(() => {
+      const { width, height } = list.getBoundingClientRect();
+      setBounds((current) => current.width === width && current.height === height ? current : { width, height });
+      setReady(width > 0);
+    });
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, []);
+
+  return <div className="benefit-orbit-wrap">
+    <ul className="benefit-orbit-list" ref={listRef} data-orbit-ready={ready ? "true" : "false"} aria-label="What you can gain from the program">
+      {benefits.map((benefit, index) => <BenefitOrbitCard key={benefit.title} benefit={benefit} index={index} rotation={rotation} width={bounds.width} height={bounds.height} reducedMotion={reducedMotion} ready={ready} />)}
+    </ul>
+    {!reducedMotion && <button className="benefit-orbit-toggle" type="button" aria-pressed={paused} onClick={() => setPaused((current) => !current)}>{paused ? "RESUME ORBIT" : "PAUSE ORBIT"}</button>}
+  </div>;
+}
+
 
 const journeySteps = [
   { id: "apply", title: "Apply", heading: "Apply and get updates", copy: "Register when applications open. Email verification and any selection steps will be explained before sign-up.", color: "purple" },
@@ -107,37 +179,22 @@ function HexMark() {
 }
 
 function ECellLogo() {
-  return <svg className="ecell-logo" viewBox="0 0 168 62" role="img" aria-label="E-Cell IIT BHU">
-    <g fill="currentColor">
-      <path d="M8 23 29 3l-1 10 10-3-2 8-17 3 3-9-8 11Z" />
-      <path d="M10 28h32v8H10zm-4 11h36v8H6zm-5 11h41v8H1z" />
-    </g>
-    <text x="48" y="39" fill="#eee8d9" fontFamily="Arial, Helvetica, sans-serif" fontSize="31" fontWeight="800" letterSpacing="-1.4">CELL</text>
-    <text x="50" y="57" fill="#c8ad68" fontFamily="Arial, Helvetica, sans-serif" fontSize="13" fontWeight="700" letterSpacing="2">IIT (BHU)</text>
-  </svg>;
+  return <Image src="/images/ecell-logo-theme.png" alt="E-Cell IIT (BHU)" width={149} height={60} className="ecell-logo" />;
 }
 
 function AssembleLetters({ text, delay = 0 }: { text: string; delay?: number }) {
   return <span aria-hidden="true">{Array.from(text).map((letter, index) => <span className="hero-letter" key={`${letter}-${index}`} style={{ animationDelay: `${delay + index * 38}ms` }}>{letter}</span>)}</span>;
 }
 
-function LaunchLetters({ text, delay = 0 }: { text: string; delay?: number }) {
-  return <span aria-hidden="true">{Array.from(text).map((letter, index) => <span className="hero-letter launch-letter" key={`${letter}-${index}`} style={{ animationDelay: `${delay + index * 58}ms` }}>{letter}</span>)}</span>;
-}
-
 export default function Home() {
   const [activeGroup, setActiveGroup] = useState("about");
   const [openQuestions, setOpenQuestions] = useState<string[]>(["about-0"]);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [entryPhase, setEntryPhase] = useState<"intro" | "blackout" | "assemble" | "move" | "reveal" | "done">("intro");
+  const [entryPhase, setEntryPhase] = useState<"intro" | "ignition" | "fracture" | "done">("intro");
   const entryOpen = entryPhase !== "done";
-  const [launchTransform, setLaunchTransform] = useState({ x: 0, y: 0 });
-  const [wipeOrigin, setWipeOrigin] = useState({ x: 50, y: 50 });
   const [activeJourneyStep, setActiveJourneyStep] = useState<string | null>(null);
   const faqRef = useRef<HTMLElement>(null);
   const worldtreeRef = useRef<HTMLDivElement>(null);
-  const heroAssembledRef = useRef<HTMLSpanElement>(null);
-  const launchTitleRef = useRef<HTMLHeadingElement>(null);
   const dustCanvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastRevealSoundAtRef = useRef(0);
@@ -149,137 +206,8 @@ export default function Home() {
       audioContextRef.current = new AudioContextConstructor();
     }
     const audio = audioContextRef.current;
-    if (audio) {
-      const playEntrySoundtrack = () => {
-        if (audio.state !== "running") return;
-        const now = audio.currentTime;
-
-        const addImpact = (startAt: number, duration: number, strength: number) => {
-          const length = Math.ceil(audio.sampleRate * duration);
-          const buffer = audio.createBuffer(1, length, audio.sampleRate);
-          const samples = buffer.getChannelData(0);
-          for (let index = 0; index < length; index += 1) {
-            const decay = Math.exp(-index / (audio.sampleRate * 0.045));
-            samples[index] = (Math.random() * 2 - 1) * decay;
-          }
-          const source = audio.createBufferSource();
-          const lowPass = audio.createBiquadFilter();
-          const gain = audio.createGain();
-          source.buffer = buffer;
-          lowPass.type = "lowpass";
-          lowPass.frequency.setValueAtTime(1500, startAt);
-          lowPass.frequency.exponentialRampToValueAtTime(90, startAt + duration);
-          gain.gain.setValueAtTime(strength, startAt);
-          gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-          source.connect(lowPass);
-          lowPass.connect(gain);
-          gain.connect(audio.destination);
-          source.start(startAt);
-          source.stop(startAt + duration);
-        };
-
-        const addSubHit = (startAt: number, strength: number) => {
-          const oscillator = audio.createOscillator();
-          const gain = audio.createGain();
-          oscillator.type = "sine";
-          oscillator.frequency.setValueAtTime(96, startAt);
-          oscillator.frequency.exponentialRampToValueAtTime(42, startAt + 0.48);
-          gain.gain.setValueAtTime(0.0001, startAt);
-          gain.gain.exponentialRampToValueAtTime(strength, startAt + 0.018);
-          gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.52);
-          oscillator.connect(gain);
-          gain.connect(audio.destination);
-          oscillator.start(startAt);
-          oscillator.stop(startAt + 0.54);
-        };
-
-        const tapAt = now + 0.008;
-        addImpact(tapAt, 0.28, 0.085);
-        addSubHit(tapAt, 0.055);
-
-        const assemblyAt = now + 0.9;
-        addImpact(assemblyAt, 0.72, 0.11);
-        addSubHit(assemblyAt, 0.095);
-
-        // A slow, low brass-like chord gives the word a restrained heroic arrival.
-        [55, 82.41, 110, 164.81].forEach((frequency, index) => {
-          const oscillator = audio.createOscillator();
-          const lowPass = audio.createBiquadFilter();
-          const gain = audio.createGain();
-          const startAt = assemblyAt + index * 0.045;
-          const duration = 1.7;
-          oscillator.type = index < 2 ? "triangle" : "sawtooth";
-          oscillator.frequency.setValueAtTime(frequency, startAt);
-          lowPass.type = "lowpass";
-          lowPass.frequency.setValueAtTime(260, startAt);
-          lowPass.frequency.linearRampToValueAtTime(620, startAt + 0.9);
-          gain.gain.setValueAtTime(0.0001, startAt);
-          gain.gain.linearRampToValueAtTime(index < 2 ? 0.045 : 0.012, startAt + 0.55);
-          gain.gain.setValueAtTime(index < 2 ? 0.045 : 0.012, startAt + 1.05);
-          gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-          oscillator.connect(lowPass);
-          lowPass.connect(gain);
-          gain.connect(audio.destination);
-          oscillator.start(startAt);
-          oscillator.stop(startAt + duration + 0.02);
-        });
-
-        // A filtered noise rise adds scale without turning the letters into little chimes.
-        const riseDuration = 1.25;
-        const riseBuffer = audio.createBuffer(1, Math.ceil(audio.sampleRate * riseDuration), audio.sampleRate);
-        const riseSamples = riseBuffer.getChannelData(0);
-        for (let index = 0; index < riseSamples.length; index += 1) riseSamples[index] = (Math.random() * 2 - 1) * 0.28;
-        const rise = audio.createBufferSource();
-        const riseFilter = audio.createBiquadFilter();
-        const riseGain = audio.createGain();
-        rise.buffer = riseBuffer;
-        riseFilter.type = "bandpass";
-        riseFilter.Q.setValueAtTime(0.55, assemblyAt);
-        riseFilter.frequency.setValueAtTime(180, assemblyAt);
-        riseFilter.frequency.exponentialRampToValueAtTime(1700, assemblyAt + riseDuration);
-        riseGain.gain.setValueAtTime(0.0001, assemblyAt);
-        riseGain.gain.linearRampToValueAtTime(0.018, assemblyAt + 0.85);
-        riseGain.gain.exponentialRampToValueAtTime(0.0001, assemblyAt + riseDuration);
-        rise.connect(riseFilter);
-        riseFilter.connect(riseGain);
-        riseGain.connect(audio.destination);
-        rise.start(assemblyAt);
-        rise.stop(assemblyAt + riseDuration);
-      };
-      void audio.resume().then(playEntrySoundtrack).catch(() => {});
-    }
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setEntryPhase("done");
-      return;
-    }
-
-    setEntryPhase("blackout");
-    window.setTimeout(() => {
-      setEntryPhase("assemble");
-      window.setTimeout(() => {
-        const destination = heroAssembledRef.current?.getBoundingClientRect();
-        const assembled = launchTitleRef.current?.getBoundingClientRect();
-        if (!destination || !assembled) {
-          setEntryPhase("done");
-          return;
-        }
-        setLaunchTransform({
-          x: destination.left + destination.width / 2 - (assembled.left + assembled.width / 2),
-          y: destination.top + destination.height / 2 - (assembled.top + assembled.height / 2),
-        });
-        setWipeOrigin({
-          x: ((destination.left + destination.width / 2) / window.innerWidth) * 100,
-          y: ((destination.top + destination.height / 2) / window.innerHeight) * 100,
-        });
-        requestAnimationFrame(() => {
-          setEntryPhase("move");
-          window.setTimeout(() => {
-            setEntryPhase("reveal");
-            window.setTimeout(() => setEntryPhase("done"), 2050);
-          }, 1400);
-        });
-      }, 2550);
-    }, 900);
+    if (audio?.state === "suspended") void audio.resume().catch(() => {});
+    setEntryPhase("done");
   };
 
   useEffect(() => {
@@ -531,12 +459,23 @@ export default function Home() {
   return (
     <main className="site-shell">
       <canvas ref={dustCanvasRef} className="dust-particle-canvas" aria-hidden="true" />
-      {entryOpen && <section className={`entry-screen${entryPhase !== "intro" ? " is-cinematic" : ""}${entryPhase === "blackout" ? " is-blackout" : ""}${entryPhase === "reveal" ? " is-revealing" : ""}`} role="dialog" aria-modal="true" aria-label="Welcome to Campus Assembly">
+      {entryOpen && <section className={`entry-screen${entryPhase !== "intro" ? " is-cinematic" : ""}${entryPhase === "ignition" ? " is-igniting" : ""}${entryPhase === "fracture" ? " is-fracturing" : ""}`} role="dialog" aria-modal="true" aria-label="Welcome to Campus Assembly">
         <Image src="/images/cap-entry-background.png" alt="" fill sizes="100vw" priority className="entry-backdrop-photo" />
+        {entryPhase !== "intro" && <div className={`entry-impact${entryPhase === "ignition" ? " is-live" : ""}`} aria-hidden="true" />}
+        {entryPhase !== "intro" && <svg className={`entry-fracture-lines${entryPhase === "fracture" ? " is-breaking" : ""}`} viewBox="0 0 1000 700" preserveAspectRatio="none" aria-hidden="true">
+          <path className="entry-crack" pathLength={1} d="M500 350 L420 315 L340 336 L200 273 L100 315 L0 308" />
+          <path className="entry-crack" pathLength={1} d="M500 350 L540 329 L610 294 L720 245 L820 154 L1000 0" />
+          <path className="entry-crack" pathLength={1} d="M500 350 L600 427 L660 476 L700 518 L840 588 L1000 700" />
+          <path className="entry-crack" pathLength={1} d="M500 350 L390 427 L340 476 L270 504 L130 602 L0 700" />
+          <path className="entry-crack" pathLength={1} d="M398 302 L390 269 L365 248 L374 216 L350 185 L361 154 L339 123 L347 92 L327 60" />
+          <path className="entry-crack" pathLength={1} d="M609 304 L618 270 L642 249 L633 216 L657 185 L647 154 L669 123 L661 92 L681 60" />
+          <path className="entry-crack" pathLength={1} d="M420 478 L389 487 L375 515 L341 510 L315 535 L281 529 L256 557 L220 550 L194 578 L158 571 L129 600 L91 593 L62 622" />
+          <path className="entry-crack" pathLength={1} d="M582 480 L613 489 L628 517 L661 511 L687 537 L721 531 L746 559 L781 552 L808 580 L844 573 L873 602 L910 595 L940 624" />
+        </svg>}
+        {entryPhase === "fracture" && <div className="entry-shards" aria-hidden="true"><span className="entry-shard entry-shard-north" /><span className="entry-shard entry-shard-east" /><span className="entry-shard entry-shard-south" /><span className="entry-shard entry-shard-west" /></div>}
         <div className="entry-flag-motion" aria-hidden="true"><span className="entry-flag entry-flag-left" /><span className="entry-flag entry-flag-right" /></div>
         <div className="entry-fire-glows" aria-hidden="true"><span className="entry-fire-glow entry-fire-glow-1" /><span className="entry-fire-glow entry-fire-glow-2" /><span className="entry-fire-glow entry-fire-glow-3" /><span className="entry-fire-glow entry-fire-glow-4" /></div>
         <div className="entry-vignette" aria-hidden="true" />
-        <div className={`assemble-background${entryPhase === "blackout" || entryPhase === "assemble" || entryPhase === "move" ? " is-visible" : ""}`} aria-hidden="true" />
         <div className="entry-brand"><HexMark /><span>CAMPUS ASSEMBLY<small>INITIATIVE / 2026</small></span></div>
         <div className="entry-center">
           <span className="entry-overline">YOUR CAMPUS. YOUR FRONTIER.</span>
@@ -547,19 +486,15 @@ export default function Home() {
         </div>
         <span className="entry-coordinate entry-coordinate-left">EARTH-616 / CAP</span>
         <span className="entry-coordinate entry-coordinate-right">EST. 2026</span>
-        {entryPhase === "assemble" || entryPhase === "move" || entryPhase === "reveal" ? <h1 ref={launchTitleRef} className={`launch-title${entryPhase === "move" || entryPhase === "reveal" ? " is-moving" : ""}`} aria-hidden="true" style={{ "--launch-x": `${launchTransform.x}px`, "--launch-y": `${launchTransform.y}px` } as CSSProperties}>
-          <span className="hero-title-line"><LaunchLetters text="ASSEMBLED" /></span>
-        </h1> : null}
       </section>}
       <div className="worldtree-background" aria-hidden="true" ref={worldtreeRef}>
         <Image src="/images/multiverse-canopy-hq.png" alt="" fill sizes="100vw" quality={90} className="worldtree-image" />
         <div className="worldtree-shade" />
         <Image src="/images/doom-hero.png" alt="" width={1024} height={1536} sizes="(max-width: 640px) 100vw, 68vw" className="worldtree-mask" />
       </div>
-      <div className="site-content" data-launching={entryOpen ? "true" : "false"} data-launch-reveal={entryPhase === "reveal" ? "true" : "false"} style={{ "--launch-origin-x": `${wipeOrigin.x}%`, "--launch-origin-y": `${wipeOrigin.y}%` } as CSSProperties} inert={entryOpen}>
-      <div className="announcement"><span className="live-dot" /> INTEL UPDATE <span className="announcement-divider">/</span> THE NEXT GENERATION OF CAMPUS LEADERS STARTS HERE <a href="#about">DECRYPT <Arrow /></a></div>
+      <div className="site-content" data-launching={entryPhase === "intro" || entryPhase === "ignition" ? "true" : "false"} data-launch-reveal={entryPhase === "fracture" ? "true" : "false"} inert={entryOpen}>
       <header className="site-header">
-        <a className="brand header-brand" href="#top" aria-label="Campus Assembly, E-Cell IIT BHU"><ECellLogo /><span className="brand-divider" aria-hidden="true" /><HexMark /><span className="brand-name">CAMPUS<span>·</span> ASSEMBLY<span className="brand-sub">INITIATIVE  /  2026</span></span></a>
+        <a className="brand header-brand" href="#top" aria-label="Campus Assembly, E-Cell IIT BHU"><ECellLogo /><span className="brand-divider" aria-hidden="true" /><span className="brand-name">CAMPUS ASSEMBLY<span className="brand-sub">INITIATIVE  /  2026</span></span></a>
         <button className="menu-toggle" aria-label={menuOpen ? "Close navigation" : "Open navigation"} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? "×" : "☰"}</button>
         <nav className={menuOpen ? "main-nav nav-open" : "main-nav"} aria-label="Main navigation" onClick={() => setMenuOpen(false)}>
           <a href="#about">ABOUT CAP</a><a href="#journey">HOW IT WORKS</a><a href="#missions">WHAT YOU’LL DO</a><a href="#faq">FAQ</a>
@@ -572,7 +507,7 @@ export default function Home() {
         <div className="hero-orbit orbit-one" aria-hidden="true" /><div className="hero-orbit orbit-two" aria-hidden="true" />
         <div className="hero-copy">
           <div className="eyebrow"><span className="eyebrow-line" /> CAMPUS AMBASSADOR PROGRAM <span className="eyebrow-index">[ EARTH-616 / CAP ]</span></div>
-          <h1 aria-label="THE FUTURE IS ASSEMBLED"><span className="hero-title-line"><AssembleLetters text="THE FUTURE" /></span><span className="hero-title-line"><AssembleLetters text="IS" delay={380} /></span><span className="hero-title-line"><span className="hero-title-accent" ref={heroAssembledRef}><AssembleLetters text="ASSEMBLED" delay={455} /></span></span></h1>
+          <h1 aria-label="THE FUTURE IS ASSEMBLED"><span className="hero-title-line"><AssembleLetters text="THE FUTURE" /></span><span className="hero-title-line"><AssembleLetters text="IS" delay={380} /></span><span className="hero-title-line"><span className="hero-title-accent"><AssembleLetters text="ASSEMBLED" delay={455} /></span></span></h1>
           <p className="hero-tagline">CAMPUS AMBASSADOR PROGRAM</p>
           <p className="hero-description"><span className="hero-description-highlight">CAP helps students bring entrepreneurship activities to their campus through outreach, content, events and quizzes.</span></p>
           <div className="hero-actions"><a className="button button-primary" href="#join">APPLICATION DETAILS <Arrow diagonal /></a><a className="button button-ghost" href="#about">WHAT IS CAP? <span>↓</span></a></div>
@@ -595,7 +530,7 @@ export default function Home() {
       <section className="journey-section" id="journey">
         <div className="section journey-inner">
           <div className="section-kicker"><span>02 / HOW IT WORKS</span><span>YOUR PARTICIPATION</span></div>
-          <div className="journey-title"><div><p className="overline">FROM SIGN-UP TO SUBMISSION</p><h2>How CAP <em>works</em></h2></div><p>A simple overview of how participants take part. Application dates and selection details are still being confirmed.</p></div>
+          <div className="journey-title"><div><p className="overline">FROM SIGN-UP TO SUBMISSION</p><h2>How CAP <em>works</em></h2></div></div>
           <div className="journey-explorer" onMouseLeave={() => setActiveJourneyStep(null)}>
             <div className="journey-stones" role="group" aria-label="Steps in the CAP program" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", position: "relative", marginTop: 34 }}>
               {journeySteps.map((step, index) => {
@@ -618,7 +553,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section benefits-section" id="benefits"><div className="section-kicker"><span>03 / WHAT YOU CAN GAIN</span><span>SKILLS THROUGH PRACTICE</span></div><div className="benefits-title"><p className="overline">A CAMPUS ROLE. PRACTICAL EXPERIENCE.</p><h2>What&apos;s <em>in it</em><br />for you?</h2></div><p className="benefits-intro">Take part in entrepreneurship on your campus and get access to experiences, resources and recognition through CAP.</p><ul className="benefit-icons-grid">{benefits.map((benefit, index) => <li key={benefit.title}><span className="benefit-icon-number">0{index + 1}</span><span className="benefit-icon-halo"><BenefitIcon name={benefit.icon} /></span><h3>{benefit.title}</h3><p>{benefit.copy}</p></li>)}</ul></section>
+      <section className="section benefits-section" id="benefits"><div className="section-kicker"><span>03 / WHAT YOU CAN GAIN</span><span>SKILLS THROUGH PRACTICE</span></div><div className="benefits-title"><p className="overline">A CAMPUS ROLE. PRACTICAL EXPERIENCE.</p><h2>What&apos;s <em>in it</em><br />for you?</h2></div><p className="benefits-intro">Take part in entrepreneurship on your campus and get access to experiences, resources and recognition through CAP.</p><BenefitOrbit /></section>
 
       <section className="missions-section" id="missions"><div className="section missions-inner"><div className="section-kicker"><span>04 / PROGRAM TASKS</span><span>WHAT PARTICIPANTS DO</span></div><div className="missions-head"><div><p className="overline">TYPICAL TASK AREAS</p><h2>Ways to <em>take part.</em></h2></div></div><ul className="mission-list">
         <li><button className="mission-flip" type="button" aria-label="Campus outreach. Help students hear about entrepreneurship activities, competitions and events."><span className="mission-flip-inner" aria-hidden="true"><span className="mission-flip-face mission-flip-front"><span className="mission-flip-title">Campus outreach</span></span><span className="mission-flip-face mission-flip-back"><span className="mission-flip-description">Help students hear about entrepreneurship activities, competitions and events.</span></span></span></button></li>
