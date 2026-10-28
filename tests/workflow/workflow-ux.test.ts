@@ -1,6 +1,7 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { getRepository, setRepository } from "../../lib/repositories";
+import { MemoryRepository } from "../../lib/repositories/memory/memory-repository";
+import { getPrdSeedData } from "../../lib/repositories/seed/prd-seed";
 import type { SubmissionsRepository } from "../../lib/repositories/types";
 
 describe("Workflow & UX Features: Repeated Flags, Duplicate Notices & Task Types", () => {
@@ -14,10 +15,13 @@ describe("Workflow & UX Features: Repeated Flags, Duplicate Notices & Task Types
   let repo: SubmissionsRepository;
 
   before(async () => {
-    process.env.DATA_LAYER = "memory";
-    setRepository(null);
-    repo = getRepository();
-    await repo.seed?.();
+    const seed = getPrdSeedData();
+    const workshop = seed.tasks.find((task) => task.id === "task-workshop");
+    assert.ok(workshop, "Hybrid workshop task must be seeded");
+
+    // This workflow verifies hybrid task submission and review, not expired-cutoff behavior.
+    workshop.deadline = new Date(Date.now() + 30 * 86_400_000).toISOString();
+    repo = new MemoryRepository(seed);
   });
 
   describe("1. Duplicate Notice & Repeated Flags Counter", () => {
