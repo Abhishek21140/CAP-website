@@ -12,6 +12,9 @@ const getInitialParam = (key: string, fallback: string = "") => {
 };
 import type { BulkApproveResult, LeaderboardResult } from "@/lib/repositories/types";
 import styles from "./admin.module.css";
+import ParticipantsPanel from "./participants-panel";
+import TasksPanel from "./tasks-panel";
+import ContentPanel from "./content-panel";
 
 type QueueResponse = {
   submissions: QueueRow[];
@@ -1545,6 +1548,12 @@ export default function AdminPage() {
                 </div>
               </div>
             </>
+          ) : section === "Participants" ? (
+            <ParticipantsPanel canManage={isSuperAdmin} />
+          ) : section === "Task Store" ? (
+            <TasksPanel canManage={isSuperAdmin} />
+          ) : section === "Content" ? (
+            <ContentPanel canManage={isSuperAdmin} />
           ) : section !== "Submissions" ? (
             <div className={styles.placeholder}>
               <span>◌</span>
