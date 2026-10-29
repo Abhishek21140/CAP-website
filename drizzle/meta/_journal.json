@@ -22,6 +22,20 @@
       "when": 1792398032330,
       "tag": "0002_trgm_search_and_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792398032331,
+      "tag": "0003_add_quizzes_and_cms",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792398032332,
+      "tag": "0004_fix_announcements_and_phone_index",
+      "breakpoints": true
     }
   ]
 }

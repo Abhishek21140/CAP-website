@@ -1,6 +1,6 @@
 import { drizzle, PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "./schema";
+import * as schema from "./admin-schema";
 
 /**
  * Global singleton so Next.js hot-reload doesn't leak connections.
@@ -25,6 +25,9 @@ export function getDb(): PostgresJsDatabase<typeof schema> {
         /* Next.js serverless: keep the pool small */
         max: 5,
         idle_timeout: 20,
+        connection: {
+          search_path: "cap,public",
+        },
       });
     }
     globalForDb._drizzle = drizzle(globalForDb._pgClient, { schema });

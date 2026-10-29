@@ -1,6 +1,6 @@
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "./schema";
+import * as schema from "./admin-schema";
 
 let globalDb: ReturnType<typeof drizzlePostgres<typeof schema>> | null = null;
 
@@ -22,6 +22,9 @@ export function getPostgresDb() {
     prepare: !isSupabasePooler,
     ssl: isLocal ? false : "require",
     connect_timeout: 15,
+    connection: {
+      search_path: "cap,public",
+    },
   });
 
   globalDb = drizzlePostgres(client, { schema });
