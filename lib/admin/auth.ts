@@ -27,6 +27,12 @@ export const CAPABILITIES = {
   "leaderboard.manage": ["super_admin"],
   "scoreAdjustments.manage": ["super_admin"],
   "users.manage": ["super_admin"],
+  "participants.view": ["super_admin", "reviewer", "viewer"],
+  "participants.manage": ["super_admin"],
+  "tasks.view": ["super_admin", "reviewer", "viewer"],
+  "tasks.manage": ["super_admin"],
+  "content.view": ["super_admin", "reviewer", "viewer"],
+  "content.manage": ["super_admin"],
 } as const satisfies Record<string, readonly Role[]>;
 
 const defaultSeedUsers: AdminUser[] = [

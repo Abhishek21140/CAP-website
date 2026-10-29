@@ -35,6 +35,7 @@ export const participants = capSchema.table(
   "participants",
   {
     id: varchar("id", { length: 36 }).primaryKey(), // display ID e.g. "CAP-0001"
+    userId: varchar("user_id", { length: 64 }), // auth provider / session UID
     name: text("name").notNull(),
     email: text("email").notNull().unique(),
     phone: text("phone"),
@@ -43,6 +44,7 @@ export const participants = capSchema.table(
     year: text("year"),
     city: text("city"),
     rollNumber: text("roll_number").notNull(),
+    socialHandles: jsonb("social_handles"), // { instagram?, linkedin?, twitter?, github? }
     status: text("status").notNull().default("Active"), // Pending Approval, Active, Inactive
     totalPoints: integer("total_points").notNull().default(0), // recomputed, never incremented
     rank: integer("rank"), // live rank (admin view)
@@ -271,4 +273,176 @@ export const historyAuditLogs = capSchema.table(
     timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index("audit_entity_idx").on(t.entity, t.entityId, t.timestamp)]
+);
+
+// 12. Quizzes (PRD Section 6.1 D & 10)
+export const quizzes = capSchema.table(
+  "quizzes",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    taskId: varchar("task_id", { length: 64 })
+      .notNull()
+      .references(() => tasks.id),
+    title: text("title").notNull(),
+    description: text("description"),
+    durationMinutes: integer("duration_minutes").notNull().default(15),
+    questions: jsonb("questions").notNull(), // Array of { id: string, question: string, options: string[], points: number, correctOptionIndex: number }
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("quizzes_task_idx").on(t.taskId)]
+);
+
+// 13. Quiz Responses (PRD Section 6.1 D & 10)
+export const quizResponses = capSchema.table(
+  "quiz_responses",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    quizId: varchar("quiz_id", { length: 64 })
+      .notNull()
+      .references(() => quizzes.id),
+    taskId: varchar("task_id", { length: 64 })
+      .notNull()
+      .references(() => tasks.id),
+    participantId: varchar("participant_id", { length: 36 })
+      .notNull()
+      .references(() => participants.id),
+    answers: jsonb("answers").notNull(), // Record<string, number> - questionId -> selectedOptionIndex
+    score: integer("score").notNull().default(0),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
+    isCompleted: boolean("is_completed").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("quiz_responses_task_participant_uq").on(t.taskId, t.participantId),
+    index("quiz_responses_quiz_idx").on(t.quizId),
+  ]
+);
+
+// 14. FAQs (PRD Section 6.1 H, 6.2 H & 10)
+export const faqs = capSchema.table(
+  "faqs",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    group: text("group").notNull(), // about | benefits | tasks | points | updates
+    question: text("question").notNull(),
+    answer: text("answer").notNull(),
+    displayOrder: integer("display_order").notNull().default(0),
+    status: text("status").notNull().default("draft"), // draft | published | hidden
+    requiresConfirmation: boolean("requires_confirmation").notNull().default(false),
+    confirmedBy: varchar("confirmed_by", { length: 64 }).references(() => adminUsers.id),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    updatedBy: varchar("updated_by", { length: 64 }).references(() => adminUsers.id),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("faqs_group_status_idx").on(t.group, t.status),
+    check("faqs_status_chk", sql`${t.status} in ('draft','published','hidden')`),
+  ]
+);
+
+// 15. Benefits (PRD Section 6.1 G, 6.2 H & 10)
+export const benefits = capSchema.table(
+  "benefits",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    icon: text("icon").notNull().default("star"),
+    tier: text("tier").notNull().default("experience"), // included | experience | merit_based
+    displayOrder: integer("display_order").notNull().default(0),
+    status: text("status").notNull().default("draft"), // draft | published | hidden
+    requiresConfirmation: boolean("requires_confirmation").notNull().default(false),
+    confirmedBy: varchar("confirmed_by", { length: 64 }).references(() => adminUsers.id),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("benefits_status_idx").on(t.status),
+    check("benefits_tier_chk", sql`${t.tier} in ('included','experience','merit_based')`),
+    check("benefits_status_chk", sql`${t.status} in ('draft','published','hidden')`),
+  ]
+);
+
+// 16. Program Info Items (PRD Section 6.1 B, 6.2 H & 10)
+export const programInfoItems = capSchema.table(
+  "program_info_items",
+  {
+    key: varchar("key", { length: 64 }).primaryKey(), // duration | hours_per_week | tasks_per_week | eligibility | rewards | contact
+    value: text("value").notNull(),
+    status: text("status").notNull().default("placeholder"), // confirmed | placeholder
+    confirmedBy: varchar("confirmed_by", { length: 64 }).references(() => adminUsers.id),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    check("prog_info_status_chk", sql`${t.status} in ('confirmed','placeholder')`),
+  ]
+);
+
+// 17. Milestones & Timeline (PRD Section 6.1 B, 6.2 H & 10)
+export const milestones = capSchema.table(
+  "milestones",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    label: text("label").notNull(),
+    phase: text("phase").notNull(),
+    startDate: timestamp("start_date", { withTimezone: true }),
+    endDate: timestamp("end_date", { withTimezone: true }),
+    isPeak: boolean("is_peak").notNull().default(false),
+    displayOrder: integer("display_order").notNull().default(0),
+    status: text("status").notNull().default("draft"), // draft | published | hidden
+  },
+  (t) => [
+    index("milestones_display_order_idx").on(t.displayOrder),
+    check("milestones_status_chk", sql`${t.status} in ('draft','published','hidden')`),
+  ]
+);
+
+// 18. Testimonials (PRD Section 6.1 I, 6.2 H & 10)
+export const testimonials = capSchema.table(
+  "testimonials",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    participantName: text("participant_name").notNull(),
+    photoUrl: text("photo_url"),
+    photoAlt: text("photo_alt"),
+    college: text("college"),
+    year: text("year"),
+    roleOrCohort: text("role_or_cohort"),
+    sourceLabel: text("source_label").notNull(), // alumni | pilot | organising_team
+    quote: text("quote").notNull(),
+    verifiedAchievement: text("verified_achievement"),
+    consentStatus: text("consent_status").notNull().default("granted"), // granted | withdrawn
+    consentRecordedAt: timestamp("consent_recorded_at", { withTimezone: true }).defaultNow().notNull(),
+    status: text("status").notNull().default("draft"), // draft | published | hidden
+    displayOrder: integer("display_order").notNull().default(0),
+    updatedBy: varchar("updated_by", { length: 64 }).references(() => adminUsers.id),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("testimonials_status_idx").on(t.status),
+    check("testimonials_source_chk", sql`${t.sourceLabel} in ('alumni','pilot','organising_team')`),
+    check("testimonials_consent_chk", sql`${t.consentStatus} in ('granted','withdrawn')`),
+    check("testimonials_status_chk", sql`${t.status} in ('draft','published','hidden')`),
+  ]
+);
+
+// 19. Announcements (PRD Section 6.2 H & 10)
+export const announcements = capSchema.table(
+  "announcements",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    status: text("status").notNull().default("draft"), // draft | published | archived
+    publishFrom: timestamp("publish_from", { withTimezone: true }),
+    publishTo: timestamp("publish_to", { withTimezone: true }),
+    updatedBy: varchar("updated_by", { length: 64 }).references(() => adminUsers.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("announcements_status_idx").on(t.status),
+    check("announcements_status_chk", sql`${t.status} in ('draft','published','archived')`),
+  ]
 );

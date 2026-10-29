@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import type { FaqItem, LeaderboardResult, PublicContent } from "@/lib/repositories/types";
 
 const faqGroups = [
   { id: "about", label: "ABOUT CAP", questions: [
@@ -47,6 +48,41 @@ const benefits = [
   { icon: "merch", title: "Sponsor goodies and resources", copy: "Get goodies, merchandise and learning resources from sponsors." },
 ];
 
+type FaqGroup = { id: string; label: string; questions: [string, string][] };
+
+const FAQ_GROUP_ORDER = ["about", "benefits", "tasks", "points", "updates"] as const;
+
+const FAQ_GROUP_LABELS: Record<string, string> = {
+  about: "ABOUT CAP",
+  benefits: "BENEFITS",
+  tasks: "TIME & TASKS",
+  points: "POINTS & DEADLINES",
+  updates: "UPDATES & SUPPORT",
+};
+
+/** Groups CMS FAQs into the same shape the static fallback uses. */
+function groupFaqs(items: FaqItem[]): FaqGroup[] {
+  const byGroup = new Map<string, [string, string][]>();
+  for (const item of items) {
+    const bucket = byGroup.get(item.group) ?? [];
+    bucket.push([item.question, item.answer]);
+    byGroup.set(item.group, bucket);
+  }
+
+  const ordered: FaqGroup[] = [];
+  for (const id of FAQ_GROUP_ORDER) {
+    const questions = byGroup.get(id);
+    if (questions && questions.length > 0) {
+      ordered.push({ id, label: FAQ_GROUP_LABELS[id] ?? id.toUpperCase(), questions });
+      byGroup.delete(id);
+    }
+  }
+  for (const [id, questions] of byGroup) {
+    ordered.push({ id, label: FAQ_GROUP_LABELS[id] ?? id.toUpperCase(), questions });
+  }
+  return ordered;
+}
+
 function BenefitIcon({ name }: { name: string }) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 3.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   return <svg className="benefit-icon-art" viewBox="0 0 96 96" aria-hidden="true" {...common}>
@@ -63,9 +99,9 @@ function BenefitIcon({ name }: { name: string }) {
   </svg>;
 }
 
-function BenefitCards() {
+function BenefitCards({ items }: { items: ReadonlyArray<{ icon: string; title: string; copy: string }> }) {
   return <ul className="benefit-cards" aria-label="What you can gain from the program">
-    {benefits.map((benefit, index) => <li className="benefit-flip-card" key={benefit.title} tabIndex={0} aria-label={`${benefit.title}: ${benefit.copy}`}>
+    {items.map((benefit, index) => <li className="benefit-flip-card" key={benefit.title} tabIndex={0} aria-label={`${benefit.title}: ${benefit.copy}`}>
       <div className="benefit-flip-inner">
         <div className="benefit-card-face benefit-card-front">
           <span className="benefit-card-number">{String(index + 1).padStart(2, "0")}</span>
@@ -140,11 +176,61 @@ export default function Home() {
   const [entryPhase, setEntryPhase] = useState<"intro" | "ignition" | "fracture" | "done">("intro");
   const entryOpen = entryPhase !== "done";
   const [activeJourneyStep, setActiveJourneyStep] = useState<string | null>(null);
+  const [publicContent, setPublicContent] = useState<PublicContent | null>(null);
+  const [publicLeaderboard, setPublicLeaderboard] = useState<LeaderboardResult | null>(null);
   const faqRef = useRef<HTMLElement>(null);
   const worldtreeRef = useRef<HTMLDivElement>(null);
   const dustCanvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const lastRevealSoundAtRef = useRef(0);
+
+  // Public CMS content + leaderboard (falls back to the static copy below on failure).
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/content/public");
+        if (!response.ok) return;
+        const data = (await response.json()) as PublicContent;
+        if (!cancelled) setPublicContent(data);
+      } catch {
+        // Static fallback stays in place.
+      }
+    })();
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/leaderboard");
+        if (!response.ok) return;
+        const data = (await response.json()) as LeaderboardResult;
+        if (!cancelled) setPublicLeaderboard(data);
+      } catch {
+        // Leaderboard section keeps its static copy.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const liveFaqGroups: FaqGroup[] =
+    publicContent && publicContent.faqs.length > 0 ? groupFaqs(publicContent.faqs) : (faqGroups as FaqGroup[]);
+
+  const liveBenefits =
+    publicContent && publicContent.benefits.length > 0
+      ? publicContent.benefits.map((benefit) => ({
+          icon: benefit.icon,
+          title: benefit.title,
+          copy: benefit.description,
+        }))
+      : benefits;
+
+  // Keep the active FAQ tab valid when CMS content changes.
+  const resolvedFaqGroupId = liveFaqGroups.some((group) => group.id === activeGroup)
+    ? activeGroup
+    : liveFaqGroups[0]?.id ?? activeGroup;
 
   const enterExperience = () => {
     if (entryPhase !== "intro") return;
@@ -401,7 +487,7 @@ export default function Home() {
     faqRef.current?.querySelectorAll<HTMLButtonElement>(".faq-question")[next]?.focus();
   };
 
-  const currentGroup = faqGroups.find((group) => group.id === activeGroup)!;
+  const currentGroup = liveFaqGroups.find((group) => group.id === resolvedFaqGroupId) ?? liveFaqGroups[0] ?? faqGroups[0];
 
   return (
     <main className="site-shell">
@@ -500,7 +586,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section benefits-section" id="benefits"><div className="section-kicker"><span>03 / WHAT YOU CAN GAIN</span><span>SKILLS THROUGH PRACTICE</span></div><div className="benefits-title"><p className="overline">A CAMPUS ROLE. PRACTICAL EXPERIENCE.</p><h2>What&apos;s <em>in it</em><br />for you?</h2></div><p className="benefits-intro">Take part in entrepreneurship on your campus and get access to experiences, resources and recognition through CAP.</p><BenefitCards /></section>
+      <section className="section benefits-section" id="benefits"><div className="section-kicker"><span>03 / WHAT YOU CAN GAIN</span><span>SKILLS THROUGH PRACTICE</span></div><div className="benefits-title"><p className="overline">A CAMPUS ROLE. PRACTICAL EXPERIENCE.</p><h2>What&apos;s <em>in it</em><br />for you?</h2></div><p className="benefits-intro">Take part in entrepreneurship on your campus and get access to experiences, resources and recognition through CAP.</p><BenefitCards items={liveBenefits} /></section>
 
       <section className="missions-section" id="missions"><div className="section missions-inner"><div className="section-kicker"><span>04 / PROGRAM TASKS</span><span>WHAT PARTICIPANTS DO</span></div><div className="missions-head"><div><p className="overline">TYPICAL TASK AREAS</p><h2>Ways to <em>take part.</em></h2></div></div><ul className="mission-list">
         <li><button className="mission-flip" type="button" aria-label="Campus outreach. Help students hear about entrepreneurship activities, competitions and events."><span className="mission-flip-inner" aria-hidden="true"><span className="mission-flip-face mission-flip-front"><span className="mission-flip-title">Campus outreach</span></span><span className="mission-flip-face mission-flip-back"><span className="mission-flip-description">Help students hear about entrepreneurship activities, competitions and events.</span></span></span></button></li>
@@ -509,9 +595,9 @@ export default function Home() {
         <li><button className="mission-flip" type="button" aria-label="Quizzes and submissions. Complete in-site quizzes and submit task evidence through a public Drive link."><span className="mission-flip-inner" aria-hidden="true"><span className="mission-flip-face mission-flip-front"><span className="mission-flip-title">Quizzes and submissions</span></span><span className="mission-flip-face mission-flip-back"><span className="mission-flip-description">Complete in-site quizzes and submit task evidence through a public Drive link.</span></span></span></button></li>
       </ul><p className="program-note">The exact task schedule, deadlines and scoring rules will be shared before tasks begin.</p></div></section>
 
-      <section className="section leaderboard-section" id="leaderboard"><div className="section-kicker"><span>05 / PROGRESS AND RANKINGS</span><span>HOW POINTS WORK</span></div><div className="leaderboard-head"><div><p className="overline">TRACK YOUR PARTICIPATION</p><h2>See your<br /><em>progress.</em></h2></div><p>Reviewers score task submissions up to the points available for each task. Your final points determine your place on the leaderboard. The first rankings will appear when missions begin.</p></div><p className="leaderboard-note">Participants can see their own submission status and feedback. Public rankings display only the information shared with participants.</p></section>
+      <section className="section leaderboard-section" id="leaderboard"><div className="section-kicker"><span>05 / PROGRESS AND RANKINGS</span><span>HOW POINTS WORK</span></div><div className="leaderboard-head"><div><p className="overline">TRACK YOUR PARTICIPATION</p><h2>See your<br /><em>progress.</em></h2></div><p>Reviewers score task submissions up to the points available for each task. Your final points determine your place on the leaderboard. The first rankings will appear when missions begin.</p></div><p className="leaderboard-note">Participants can see their own submission status and feedback. Public rankings display only the information shared with participants.</p>{publicLeaderboard && publicLeaderboard.entries.length > 0 ? <div style={{ marginTop: 22, border: "1px solid #2c3a45", borderRadius: 10, overflow: "hidden", background: "#0d151b" }}><div style={{ display: "flex", justifyContent: "space-between", padding: "11px 16px", borderBottom: "1px solid #22303a", font: "700 10px/1 monospace", letterSpacing: ".14em", color: "#9fb0bd" }}><span>LIVE RANKINGS</span><span>{publicLeaderboard.state.status.toUpperCase()}</span></div><ol style={{ listStyle: "none", margin: 0, padding: 0 }}>{publicLeaderboard.entries.slice(0, 5).map((entry) => <li key={entry.participantId} style={{ display: "grid", gridTemplateColumns: "48px minmax(0,1fr) auto", gap: 12, alignItems: "center", padding: "10px 16px", borderBottom: "1px solid #1b2730", color: "#d8d1c1", fontSize: 14 }}><span style={{ font: "700 12px/1 monospace", color: "#d3ba70" }}>#{entry.rank}</span><span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.name}<small style={{ display: "block", color: "#8d9aa5", fontSize: 11 }}>{entry.college}</small></span><b style={{ color: "#b9f267", font: "700 13px/1 monospace" }}>{entry.totalPoints} pts</b></li>)}</ol></div> : null}</section>
 
-      <section className="faq-section" id="faq" ref={faqRef}><div className="section"><div className="section-kicker"><span>06 / FIELD INTEL</span><span>18 QUESTIONS / 05 CHANNELS</span></div><div className="faq-heading"><div><p className="overline">BEFORE YOU SUIT UP</p><h2>GOOD QUESTIONS.<br /><em>STRAIGHT ANSWERS.</em></h2></div><p>Clarity is a superpower. Find the signal before you join the mission.</p></div><div className="faq-layout"><div className="faq-tabs" role="tablist" aria-label="FAQ categories">{faqGroups.map((group, index) => <button className={activeGroup === group.id ? "faq-tab active" : "faq-tab"} role="tab" aria-selected={activeGroup === group.id} aria-controls="faq-panel" id={`tab-${group.id}`} onClick={() => {setActiveGroup(group.id); setOpenQuestions([`${group.id}-0`]);}} key={group.id}><span>0{index + 1}</span>{group.label}<Arrow /></button>)}</div><div className="faq-panel" id="faq-panel" role="tabpanel" aria-labelledby={`tab-${currentGroup.id}`}>{currentGroup.questions.map(([question, answer], index) => {const key = `${currentGroup.id}-${index}`; const isOpen = openQuestions.includes(key); return <article className={isOpen ? "faq-item faq-open" : "faq-item"} id={`faq-${currentGroup.id}-${index + 1}`} key={key}><button className="faq-question" id={`question-${key}`} aria-expanded={isOpen} aria-controls={`answer-${key}`} onClick={() => toggleQuestion(key)} onKeyDown={(event) => moveFaqFocus(event, index, currentGroup.questions.length)}><span className="faq-q-index">Q{String(faqGroups.flatMap((item) => item.questions).findIndex((item) => item[0] === question) + 1).padStart(2, "0")}</span><span>{question}</span><span className="faq-plus" aria-hidden="true">{isOpen ? "−" : "+"}</span></button><div className="faq-answer" id={`answer-${key}`} role="region" aria-labelledby={`question-${key}`} hidden={!isOpen}><p>{answer}</p></div></article>;})}</div></div></div></section>
+      <section className="faq-section" id="faq" ref={faqRef}><div className="section"><div className="section-kicker"><span>06 / FIELD INTEL</span><span>{String(liveFaqGroups.reduce((total, group) => total + group.questions.length, 0))} QUESTIONS / {String(liveFaqGroups.length).padStart(2, "0")} CHANNELS</span></div><div className="faq-heading"><div><p className="overline">BEFORE YOU SUIT UP</p><h2>GOOD QUESTIONS.<br /><em>STRAIGHT ANSWERS.</em></h2></div><p>Clarity is a superpower. Find the signal before you join the mission.</p></div><div className="faq-layout"><div className="faq-tabs" role="tablist" aria-label="FAQ categories">{liveFaqGroups.map((group, index) => <button className={currentGroup.id === group.id ? "faq-tab active" : "faq-tab"} role="tab" aria-selected={currentGroup.id === group.id} aria-controls="faq-panel" id={`tab-${group.id}`} onClick={() => {setActiveGroup(group.id); setOpenQuestions([`${group.id}-0`]);}} key={group.id}><span>0{index + 1}</span>{group.label}<Arrow /></button>)}</div><div className="faq-panel" id="faq-panel" role="tabpanel" aria-labelledby={`tab-${currentGroup.id}`}>{currentGroup.questions.map(([question, answer], index) => {const key = `${currentGroup.id}-${index}`; const isOpen = openQuestions.includes(key); return <article className={isOpen ? "faq-item faq-open" : "faq-item"} id={`faq-${currentGroup.id}-${index + 1}`} key={key}><button className="faq-question" id={`question-${key}`} aria-expanded={isOpen} aria-controls={`answer-${key}`} onClick={() => toggleQuestion(key)} onKeyDown={(event) => moveFaqFocus(event, index, currentGroup.questions.length)}><span className="faq-q-index">Q{String(liveFaqGroups.flatMap((item) => item.questions).findIndex((item) => item[0] === question) + 1).padStart(2, "0")}</span><span>{question}</span><span className="faq-plus" aria-hidden="true">{isOpen ? "−" : "+"}</span></button><div className="faq-answer" id={`answer-${key}`} role="region" aria-labelledby={`question-${key}`} hidden={!isOpen}><p>{answer}</p></div></article>;})}</div></div></div></section>
 
       <section className="join-section" id="join"><div className="section join-inner"><div className="section-kicker"><span>07 / APPLICATIONS</span><span>DETAILS TO BE ANNOUNCED</span></div><div className="join-content"><div><p className="overline">INTERESTED IN JOINING?</p><h2>Applications<br /><em>coming soon.</em></h2><p className="join-copy">Eligibility, dates and application instructions will be published here once confirmed.</p><a className="button button-primary" href="#about">REVIEW THE PROGRAM <Arrow /></a></div><div className="application-details"><h3>Before applications open</h3><p>We’ll share eligibility, time commitment, program dates, selection steps and any confirmed benefits here.</p><a className="text-link" href="#faq">READ COMMON QUESTIONS <Arrow /></a></div></div></div></section>
 
