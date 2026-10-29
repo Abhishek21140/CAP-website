@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { animate, motion, useMotionValue, useReducedMotion, useTransform, type MotionValue } from "motion/react";
 
 const faqGroups = [
   { id: "about", label: "ABOUT CAP", questions: [
@@ -64,75 +63,23 @@ function BenefitIcon({ name }: { name: string }) {
   </svg>;
 }
 
-function BenefitOrbitCard({ benefit, index, rotation, width, height, reducedMotion, ready }: {
-  benefit: (typeof benefits)[number];
-  index: number;
-  rotation: MotionValue<number>;
-  width: number;
-  height: number;
-  reducedMotion: boolean;
-  ready: boolean;
-}) {
-  const phase = useTransform(() => (reducedMotion ? 0 : rotation.get()) + index * Math.PI * 2 / benefits.length);
-  const compact = width <= 900;
-  const x = useTransform(() => compact ? 0 : Math.cos(phase.get()) * Math.min(width * 0.36, 440));
-  const y = useTransform(() => compact ? 0 : Math.sin(phase.get()) * Math.min(height * 0.31, 190));
-  const depth = useTransform(() => (Math.sin(phase.get()) + 1) / 2);
-  const scale = useTransform(() => compact ? 1 : 0.8 + depth.get() * 0.2);
-  const opacity = useTransform(() => compact ? 1 : 0.72 + depth.get() * 0.28);
-  const zIndex = useTransform(() => compact ? index : 10 + Math.round(depth.get() * 90));
-
-  return <motion.li className="benefit-orbit-card" style={ready ? { x, y, scale, opacity, zIndex } : undefined}>
-    <span className="benefit-orbit-number">{String(index + 1).padStart(2, "0")}</span>
-    <span className="benefit-icon-halo"><BenefitIcon name={benefit.icon} /></span>
-    <h3>{benefit.title}</h3>
-    <p>{benefit.copy}</p>
-  </motion.li>;
-}
-
-function BenefitOrbit() {
-  const listRef = useRef<HTMLUListElement>(null);
-  const controlsRef = useRef<ReturnType<typeof animate> | null>(null);
-  const rotation = useMotionValue(0);
-  const reducedMotionPreference = useReducedMotion();
-  const reducedMotion = reducedMotionPreference === true;
-  const [paused, setPaused] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [bounds, setBounds] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    if (reducedMotion) return;
-    const controls = animate(rotation, Math.PI * 2, { duration: 54, ease: "linear", repeat: Infinity });
-    controlsRef.current = controls;
-    return () => {
-      controls.stop();
-      controlsRef.current = null;
-    };
-  }, [reducedMotion, rotation]);
-
-  useEffect(() => {
-    if (paused) controlsRef.current?.pause();
-    else controlsRef.current?.play();
-  }, [paused, reducedMotion]);
-
-  useEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-    const observer = new ResizeObserver(() => {
-      const { width, height } = list.getBoundingClientRect();
-      setBounds((current) => current.width === width && current.height === height ? current : { width, height });
-      setReady(width > 0);
-    });
-    observer.observe(list);
-    return () => observer.disconnect();
-  }, []);
-
-  return <div className="benefit-orbit-wrap">
-    <ul className="benefit-orbit-list" ref={listRef} data-orbit-ready={ready ? "true" : "false"} aria-label="What you can gain from the program">
-      {benefits.map((benefit, index) => <BenefitOrbitCard key={benefit.title} benefit={benefit} index={index} rotation={rotation} width={bounds.width} height={bounds.height} reducedMotion={reducedMotion} ready={ready} />)}
-    </ul>
-    {!reducedMotion && <button className="benefit-orbit-toggle" type="button" aria-pressed={paused} onClick={() => setPaused((current) => !current)}>{paused ? "RESUME ORBIT" : "PAUSE ORBIT"}</button>}
-  </div>;
+function BenefitCards() {
+  return <ul className="benefit-cards" aria-label="What you can gain from the program">
+    {benefits.map((benefit, index) => <li className="benefit-flip-card" key={benefit.title} tabIndex={0} aria-label={`${benefit.title}: ${benefit.copy}`}>
+      <div className="benefit-flip-inner">
+        <div className="benefit-card-face benefit-card-front">
+          <span className="benefit-card-number">{String(index + 1).padStart(2, "0")}</span>
+          <span className="benefit-card-icon"><BenefitIcon name={benefit.icon} /></span>
+          <h3>{benefit.title}</h3>
+        </div>
+        <div className="benefit-card-face benefit-card-back" aria-hidden="true">
+          <span className="benefit-card-back-mark">✳</span>
+          <h3>{benefit.title}</h3>
+          <p>{benefit.copy}</p>
+        </div>
+      </div>
+    </li>)}
+  </ul>;
 }
 
 
@@ -516,7 +463,7 @@ export default function Home() {
         <div className="hero-bottom"><span>SCROLL TO EXPLORE <b>↓</b></span><span>NO. 001 <i>—</i> CAMPUS OPERATIONS</span><span>INDEPENDENT FAN INITIATIVE <i>✳</i></span></div>
       </section>
 
-      <div className="signal-strip"><div className="signal-track"><span>ONE CAMPUS AT A TIME</span><b>✳</b><span>IDEAS INTO ACTION</span><b>✳</b><span>YOUR WORLD NEEDS YOU</span><b>✳</b><span>ONE CAMPUS AT A TIME</span><b>✳</b><span>IDEAS INTO ACTION</span><b>✳</b><span>YOUR WORLD NEEDS YOU</span><b>✳</b></div></div>
+      <div className="signal-strip"><div className="signal-track"><div className="signal-group"><span>ONE CAMPUS AT A TIME</span><b>✳</b><span>IDEAS INTO ACTION</span><b>✳</b><span>YOUR WORLD NEEDS YOU</span><b>✳</b></div><div className="signal-group" aria-hidden="true"><span>ONE CAMPUS AT A TIME</span><b>✳</b><span>IDEAS INTO ACTION</span><b>✳</b><span>YOUR WORLD NEEDS YOU</span><b>✳</b></div></div></div>
 
       <section className="section program-section" id="about">
         <div className="section-kicker"><span>01 / ABOUT THE PROGRAM</span><span>THE BASICS</span></div>
@@ -553,7 +500,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section benefits-section" id="benefits"><div className="section-kicker"><span>03 / WHAT YOU CAN GAIN</span><span>SKILLS THROUGH PRACTICE</span></div><div className="benefits-title"><p className="overline">A CAMPUS ROLE. PRACTICAL EXPERIENCE.</p><h2>What&apos;s <em>in it</em><br />for you?</h2></div><p className="benefits-intro">Take part in entrepreneurship on your campus and get access to experiences, resources and recognition through CAP.</p><BenefitOrbit /></section>
+      <section className="section benefits-section" id="benefits"><div className="section-kicker"><span>03 / WHAT YOU CAN GAIN</span><span>SKILLS THROUGH PRACTICE</span></div><div className="benefits-title"><p className="overline">A CAMPUS ROLE. PRACTICAL EXPERIENCE.</p><h2>What&apos;s <em>in it</em><br />for you?</h2></div><p className="benefits-intro">Take part in entrepreneurship on your campus and get access to experiences, resources and recognition through CAP.</p><BenefitCards /></section>
 
       <section className="missions-section" id="missions"><div className="section missions-inner"><div className="section-kicker"><span>04 / PROGRAM TASKS</span><span>WHAT PARTICIPANTS DO</span></div><div className="missions-head"><div><p className="overline">TYPICAL TASK AREAS</p><h2>Ways to <em>take part.</em></h2></div></div><ul className="mission-list">
         <li><button className="mission-flip" type="button" aria-label="Campus outreach. Help students hear about entrepreneurship activities, competitions and events."><span className="mission-flip-inner" aria-hidden="true"><span className="mission-flip-face mission-flip-front"><span className="mission-flip-title">Campus outreach</span></span><span className="mission-flip-face mission-flip-back"><span className="mission-flip-description">Help students hear about entrepreneurship activities, competitions and events.</span></span></span></button></li>
