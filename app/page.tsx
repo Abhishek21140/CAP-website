@@ -99,9 +99,9 @@ function BenefitIcon({ name }: { name: string }) {
   </svg>;
 }
 
-function BenefitCards({ items }: { items: ReadonlyArray<{ icon: string; title: string; copy: string }> }) {
+function BenefitCards() {
   return <ul className="benefit-cards" aria-label="What you can gain from the program">
-    {items.map((benefit, index) => <li className="benefit-flip-card" key={benefit.title} tabIndex={0} aria-label={`${benefit.title}: ${benefit.copy}`}>
+    {benefits.map((benefit, index) => <li className="benefit-flip-card" key={benefit.title} tabIndex={0} aria-label={`${benefit.title}: ${benefit.copy}`}>
       <div className="benefit-flip-inner">
         <div className="benefit-card-face benefit-card-front">
           <span className="benefit-card-number">{String(index + 1).padStart(2, "0")}</span>
@@ -217,15 +217,6 @@ export default function Home() {
 
   const liveFaqGroups: FaqGroup[] =
     publicContent && publicContent.faqs.length > 0 ? groupFaqs(publicContent.faqs) : (faqGroups as FaqGroup[]);
-
-  const liveBenefits =
-    publicContent && publicContent.benefits.length > 0
-      ? publicContent.benefits.map((benefit) => ({
-          icon: benefit.icon,
-          title: benefit.title,
-          copy: benefit.description,
-        }))
-      : benefits;
 
   // Keep the active FAQ tab valid when CMS content changes.
   const resolvedFaqGroupId = liveFaqGroups.some((group) => group.id === activeGroup)
@@ -586,7 +577,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section benefits-section" id="benefits"><div className="section-kicker"><span>03 / WHAT YOU CAN GAIN</span><span>SKILLS THROUGH PRACTICE</span></div><div className="benefits-title"><p className="overline">A CAMPUS ROLE. PRACTICAL EXPERIENCE.</p><h2>What&apos;s <em>in it</em><br />for you?</h2></div><p className="benefits-intro">Take part in entrepreneurship on your campus and get access to experiences, resources and recognition through CAP.</p><BenefitCards items={liveBenefits} /></section>
+      <section className="section benefits-section" id="benefits"><div className="section-kicker"><span>03 / WHAT YOU CAN GAIN</span><span>SKILLS THROUGH PRACTICE</span></div><div className="benefits-title"><p className="overline">A CAMPUS ROLE. PRACTICAL EXPERIENCE.</p><h2>What&apos;s <em>in it</em><br />for you?</h2></div><p className="benefits-intro">Take part in entrepreneurship on your campus and get access to experiences, resources and recognition through CAP.</p><BenefitCards /></section>
 
       <section className="missions-section" id="missions"><div className="section missions-inner"><div className="section-kicker"><span>04 / PROGRAM TASKS</span><span>WHAT PARTICIPANTS DO</span></div><div className="missions-head"><div><p className="overline">TYPICAL TASK AREAS</p><h2>Ways to <em>take part.</em></h2></div></div><ul className="mission-list">
         <li><button className="mission-flip" type="button" aria-label="Campus outreach. Help students hear about entrepreneurship activities, competitions and events."><span className="mission-flip-inner" aria-hidden="true"><span className="mission-flip-face mission-flip-front"><span className="mission-flip-title">Campus outreach</span></span><span className="mission-flip-face mission-flip-back"><span className="mission-flip-description">Help students hear about entrepreneurship activities, competitions and events.</span></span></span></button></li>
